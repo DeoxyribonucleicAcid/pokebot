@@ -1,8 +1,8 @@
 import random
 from pprint import pprint
 
-from telegram import ChatAction
-from telegram.ext import Updater, CommandHandler
+from telegram import ChatAction, ParseMode
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import logging
 import urllib2
 import json
@@ -57,7 +57,7 @@ def getPokeInfo(pokemon):
             raise e
 
     sprite = sprites[random.choice(sprites.keys())]
-    dd_types_str = ', '.join(map(str, double_damage_types))
+    dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
     types_str = ', '.join(map(str, types))
     name_str = str(poke_json[u'name'])
     id_str = str(poke_json[u'id'])
@@ -75,13 +75,13 @@ def getPokeInfo(pokemon):
 
 @send_typing_action
 def info(bot, update):
-    pokemon = 'Glumanda'
+    pokemon = update.message.text.lower()
     if pokemon in names_dict["pokenames"].keys():
         pokemon = names_dict["pokenames"][pokemon]
     pokemon = pokemon.lower()
     try:
         text, sprite = getPokeInfo(pokemon)
-        bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text)
+        bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text, parse_mode=ParseMode.MARKDOWN)
     except urllib2.HTTPError:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
 
@@ -93,6 +93,7 @@ def start(bot, update):
                           '/leave nimmt dich von der Update-Liste\n'
                           '/status gibt den aktuellen Status')
     print(chats)
+
 
 if os.path.isfile('./conf.json'):
     with open('conf.json') as f:
@@ -126,8 +127,9 @@ updater = Updater(token=config["token"])
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-info_handler = CommandHandler('info', info)
-dispatcher.add_handler(info_handler)
+# info_handler = CommandHandler('info', info)
+poke_handler = MessageHandler(Filters.text, info)
+dispatcher.add_handler(poke_handler)
 
 updater.start_polling()
 j = updater.job_queue
