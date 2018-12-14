@@ -44,20 +44,30 @@ def getPokeInfo(pokemon):
     type_urls = []
     for type in poke_json[u'types']: type_urls.append(type[u'type'][u'url'])
     double_damage_types = []
+    half_damage_types = []
+    no_damage_types = []
     types = []
     for type in type_urls:
         try:
             type_json = json.load(opener.open(type))
             types.append(type_json[u'name'])
-            damage_relations = type_json[u'damage_relations'][u'double_damage_from']
-            for dd_type in damage_relations:
+            dd_relations = type_json[u'damage_relations'][u'double_damage_from']
+            hd_relations = type_json[u'damage_relations'][u'half_damage_from']
+            nd_relations = type_json[u'damage_relations'][u'no_damage_from']
+            for dd_type in dd_relations:
                 double_damage_types.append(dd_type[u'name'])
+            for hd_type in hd_relations:
+                half_damage_types.append(hd_type[u'name'])
+            for nd_type in nd_relations:
+                no_damage_types.append(nd_type[u'name'])
         except urllib2.HTTPError as e:
             logging.error('Type not found: ' + '\n' + type)
             raise e
 
     sprite = sprites[random.choice(sprites.keys())]
     dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
+    hd_types_str = ', '.join(map(str, list(set(half_damage_types))))
+    nd_types_str = ', '.join(map(str, list(set(no_damage_types))))
     types_str = ', '.join(map(str, types))
     name_str = str(poke_json[u'name'])
     id_str = str(poke_json[u'id'])
@@ -68,8 +78,9 @@ def getPokeInfo(pokemon):
     pprint(types_str)
     pprint(dd_types_str)
 
-    text = name_str + ' #' + id_str + '\n' + types_str + '\nAttack with:\n' + dd_types_str + '\n'
-
+    text = name_str + ' #' + id_str + '\n' + types_str + '\nAttack with:\n' + dd_types_str + '\nDon\'t use:\n' + hd_types_str
+    if no_damage_types == []:
+        text += '\nor worse:\n' + nd_types_str
     return text, sprite
 
 
