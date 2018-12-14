@@ -2,19 +2,16 @@ import random
 from pprint import pprint
 
 from telegram import ChatAction, ParseMode
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 import logging
-import urllib2
+import urllib.request
 import json
 import os.path
 from functools import wraps
 
 url = 'https://pokeapi.co/api/v2/'
 
-# response = urllib.urlopen(url)
-# print(response.read())
-
-opener = urllib2.build_opener()
+opener = urllib.request.build_opener()
 opener.addheaders = [('User-Agent',
                       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.2 Safari/602.3.12')]
 
@@ -35,7 +32,7 @@ def getPokeInfo(pokemon):
     pokeurl = url + 'pokemon/' + pokemon + '/'
     try:
         poke_response = opener.open(pokeurl)
-    except urllib2.HTTPError as e:
+    except urllib.request.HTTPError as e:
         logging.error('Pokemon not found: ' + '\n' + pokeurl)
         raise e
 
@@ -60,11 +57,11 @@ def getPokeInfo(pokemon):
                 half_damage_types.append(hd_type[u'name'])
             for nd_type in nd_relations:
                 no_damage_types.append(nd_type[u'name'])
-        except urllib2.HTTPError as e:
+        except urllib.request.HTTPError as e:
             logging.error('Type not found: ' + '\n' + type)
             raise e
 
-    sprite = sprites[random.choice(sprites.keys())]
+    sprite = sprites[random.choice(list(sprites.keys()))]
     dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
     hd_types_str = ', '.join(map(str, list(set(half_damage_types))))
     nd_types_str = ', '.join(map(str, list(set(no_damage_types))))
@@ -79,7 +76,7 @@ def getPokeInfo(pokemon):
     pprint(dd_types_str)
 
     text = name_str + ' #' + id_str + '\n' + types_str + '\nAttack with:\n' + dd_types_str + '\nDon\'t use:\n' + hd_types_str
-    if no_damage_types == []:
+    if no_damage_types != []:
         text += '\nor worse:\n' + nd_types_str
     return text, sprite
 
@@ -93,17 +90,17 @@ def info(bot, update):
     try:
         text, sprite = getPokeInfo(pokemon)
         bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text, parse_mode=ParseMode.MARKDOWN)
-    except urllib2.HTTPError:
+    except urllib.request.HTTPError:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
 
 
 def start(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='/start zeigt diese Liste\n'
-                          '/join setzt dich auf die Update-Liste\n'
-                          '/leave nimmt dich von der Update-Liste\n'
-                          '/status gibt den aktuellen Status')
-    print(chats)
+    sprite= 'https://cdn.bulbagarden.net/upload/3/3e/Lets_Go_Pikachu_Eevee_Professor_Oak.png'
+    bot.send_photo(chat_id=update.message.chat_id,
+                   photo=sprite,
+                   caption='Hello there! Welcome to the world of Pokémon! My name is Oak! People call me the Pokémon Prof!\n'
+                           'I will give you some hints in battle, just type the name of your opponent\'s pokemon\n'
+                           'Type /start to show this message\n')
 
 
 if os.path.isfile('./conf.json'):
@@ -118,29 +115,15 @@ if os.path.isfile('./name_dict.json'):
 else:
     raise EnvironmentError("Names file not existent or wrong format")
 
-if os.path.isfile('./chats.json'):
-    print('chats.json existing')
-    with open("chats.json", "r") as jsonFile:
-        data = json.load(jsonFile)
-        chats = data["chats"]
-else:
-    data = {}
-    data["chats"] = {}
-    chats = {}
-    # debug
-    # chats[252269446] = True
-    data["chats"] = chats
-    print('chats.json existing, creating...')
-    with open("chats.json", "w+") as jsonFile:
-        json.dump(data, jsonFile)
-
 updater = Updater(token=config["token"])
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # info_handler = CommandHandler('info', info)
 poke_handler = MessageHandler(Filters.text, info)
+start_handler = CommandHandler('start', start)
 dispatcher.add_handler(poke_handler)
+dispatcher.add_handler(start_handler)
 
 updater.start_polling()
 j = updater.job_queue
