@@ -1,4 +1,5 @@
 import random
+import sys
 from pprint import pprint
 
 from telegram import ChatAction, ParseMode
@@ -8,12 +9,17 @@ import urllib.request
 import json
 import os.path
 from functools import wraps
+import argparse
+import setproctitle
 
-url = 'https://pokeapi.co/api/v2/'
 
-opener = urllib.request.build_opener()
-opener.addheaders = [('User-Agent',
-                      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.2 Safari/602.3.12')]
+class EichState:
+    DEBUG = False
+    url = 'https://pokeapi.co/api/v2/'
+    names_dict = {}
+    opener = urllib.request.build_opener()
+    opener.addheaders = [('User-Agent',
+                          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.2 Safari/602.3.12')]
 
 
 def send_typing_action(func):
@@ -29,9 +35,9 @@ def send_typing_action(func):
 
 
 def getPokeInfo(pokemon):
-    pokeurl = url + 'pokemon/' + pokemon + '/'
+    pokeurl = EichState.url + 'pokemon/' + pokemon + '/'
     try:
-        poke_response = opener.open(pokeurl)
+        poke_response = EichState.opener.open(pokeurl)
     except urllib.request.HTTPError as e:
         logging.error('Pokemon not found: ' + '\n' + pokeurl)
         raise e
@@ -46,7 +52,7 @@ def getPokeInfo(pokemon):
     types = []
     for type in type_urls:
         try:
-            type_json = json.load(opener.open(type))
+            type_json = json.load(EichState.opener.open(type))
             types.append(type_json[u'name'])
             dd_relations = type_json[u'damage_relations'][u'double_damage_from']
             hd_relations = type_json[u'damage_relations'][u'half_damage_from']
@@ -84,8 +90,8 @@ def getPokeInfo(pokemon):
 @send_typing_action
 def info(bot, update):
     pokemon = update.message.text.lower()
-    if pokemon in names_dict["pokenames"].keys():
-        pokemon = names_dict["pokenames"][pokemon]
+    if pokemon in EichState.names_dict["pokenames"].keys():
+        pokemon = EichState.names_dict["pokenames"][pokemon]
     pokemon = pokemon.lower()
     try:
         text, sprite = getPokeInfo(pokemon)
@@ -94,36 +100,62 @@ def info(bot, update):
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
 
 
+@send_typing_action
 def start(bot, update):
-    sprite= 'https://cdn.bulbagarden.net/upload/3/3e/Lets_Go_Pikachu_Eevee_Professor_Oak.png'
+    sprite = 'https://cdn.bulbagarden.net/upload/3/3e/Lets_Go_Pikachu_Eevee_Professor_Oak.png'
     bot.send_photo(chat_id=update.message.chat_id,
                    photo=sprite,
                    caption='Hello there! Welcome to the world of Pokémon! My name is Oak! People call me the Pokémon Prof!\n'
-                           'I will give you some hints in battle, just type the name of your opponent\'s pokemon\n'
-                           'Type /start to show this message\n')
+                           'I will give you some hints in battle, just type the name of your opponent\'s pokemon in english or german.\n'
+                           'Type /start to show this message.')
 
 
-if os.path.isfile('./conf.json'):
-    with open('conf.json') as f:
-        config = json.load(f)
-else:
-    raise EnvironmentError("Config file not existent or wrong format")
+def restart(bot, update):
+    if EichState.DEBUG:
+        os.execl(sys.executable, sys.executable, *sys.argv)
+        bot.send_message(chat_id=update.message.chat_id, text='bot restarted')
 
-if os.path.isfile('./name_dict.json'):
-    with open('name_dict.json') as f:
-        names_dict = json.load(f)
-else:
-    raise EnvironmentError("Names file not existent or wrong format")
 
-updater = Updater(token=config["token"])
-dispatcher = updater.dispatcher
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+def main():
+    setproctitle.setproctitle("ProfessorEich")
+    logging.basicConfig(filename='.log', level=logging.DEBUG, filemode='w')
+    parser = argparse.ArgumentParser(description='Basic pokemon bot.')
+    parser.set_defaults(which='no_arguments')
+    parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
-# info_handler = CommandHandler('info', info)
-poke_handler = MessageHandler(Filters.text, info)
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(poke_handler)
-dispatcher.add_handler(start_handler)
+    args = parser.parse_args()
+    if args.debug == None:
+        EichState.DEBUG = False
+    else:
+        EichState.DEBUG = True
+    print(EichState.DEBUG)
 
-updater.start_polling()
-j = updater.job_queue
+    if os.path.isfile('./conf.json'):
+        with open('conf.json') as f:
+            config = json.load(f)
+    else:
+        raise EnvironmentError("Config file not existent or wrong format")
+
+    if os.path.isfile('./name_dict.json'):
+        with open('name_dict.json') as f:
+            EichState.names_dict = json.load(f)
+    else:
+        raise EnvironmentError("Names file not existent or wrong format")
+
+    updater = Updater(token=config["token"])
+    dispatcher = updater.dispatcher
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+    # info_handler = CommandHandler('info', info)
+    poke_handler = MessageHandler(Filters.text, info)
+    start_handler = CommandHandler('start', start)
+    restart_handler = CommandHandler('restart', restart)
+    dispatcher.add_handler(poke_handler)
+    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(restart_handler)
+
+    updater.start_polling()
+    j = updater.job_queue
+
+
+main()
