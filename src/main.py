@@ -1,3 +1,5 @@
+import datetime
+import math
 import random
 import sys
 from pprint import pprint
@@ -12,14 +14,9 @@ from functools import wraps
 import argparse
 import setproctitle
 
-
-class EichState:
-    DEBUG = False
-    url = 'https://pokeapi.co/api/v2/'
-    names_dict = {}
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-Agent',
-                          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.2 Safari/602.3.12')]
+from src import Pokemon
+from src.EichState import EichState
+from src.Player import Player
 
 
 def send_typing_action(func):
@@ -35,14 +32,7 @@ def send_typing_action(func):
 
 
 def getPokeInfo(pokemon):
-    pokeurl = EichState.url + 'pokemon/' + pokemon + '/'
-    try:
-        poke_response = EichState.opener.open(pokeurl)
-    except urllib.request.HTTPError as e:
-        logging.error('Pokemon not found: ' + '\n' + pokeurl)
-        raise e
-
-    poke_json = json.load(poke_response)
+    poke_json = Pokemon.get_pokemon_json(pokemon)
     sprites = {k: v for k, v in poke_json[u'sprites'].items() if v != None}
     type_urls = []
     for type in poke_json[u'types']: type_urls.append(type[u'type'][u'url'])
@@ -96,8 +86,10 @@ def info(bot, update):
     try:
         text, sprite = getPokeInfo(pokemon)
         bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text, parse_mode=ParseMode.MARKDOWN)
-    except urllib.request.HTTPError:
+    except urllib.request.HTTPError as e:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
+    except ConnectionResetError as e:
+        logging.error(e)
 
 
 @send_typing_action
@@ -112,11 +104,36 @@ def start(bot, update):
 
 def restart(bot, update):
     if EichState.DEBUG:
-        os.execl(sys.executable, sys.executable, *sys.argv)
         bot.send_message(chat_id=update.message.chat_id, text='bot restarted')
+        os.execl(sys.executable, sys.executable, *sys.argv)
+
+
+def catch(bot, update):
+    bot.send_message(chat_id=update.message.chat_id, text='I will poke you, if you stumble over a pokemon.')
+    player = Player(update.message.chat_id)
+    EichState.fileAccessor.commit_player(player)
+    EichState.fileAccessor.persist_players()
+
+
+def encounter(bot, job):
+    players = EichState.fileAccessor.get_players()
+    for player in players:
+        draw = random.random()
+        # TODO: Fix
+        now = datetime.datetime.now().hour * 60 + datetime.datetime.now().minute
+        lastEnc = player.lastEncounter.hour * 60 + player.lastEncounter.minute
+        chance = pow(1 / (24 * 60) * (now - lastEnc), math.e)
+        print(lastEnc, chance)
+        if 0 < draw < chance:
+            bot.send_message(chat_id=player.chatId, text='Encounter!')
+            pokemon_name = EichState.names_dict['pokenames'][
+                random.choice(list(EichState.names_dict['pokenames'].keys()))]
+            Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name))
+        bot.send_message(chat_id=player.chatId, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
 
 
 def main():
+    print('MAIN')
     setproctitle.setproctitle("ProfessorEich")
     logging.basicConfig(filename='.log', level=logging.DEBUG, filemode='w')
     parser = argparse.ArgumentParser(description='Basic pokemon bot.')
@@ -128,7 +145,6 @@ def main():
         EichState.DEBUG = False
     else:
         EichState.DEBUG = True
-    print(EichState.DEBUG)
 
     if os.path.isfile('./conf.json'):
         with open('conf.json') as f:
@@ -150,12 +166,15 @@ def main():
     poke_handler = MessageHandler(Filters.text, info)
     start_handler = CommandHandler('start', start)
     restart_handler = CommandHandler('restart', restart)
+    catch_handler = CommandHandler('catch', catch)
     dispatcher.add_handler(poke_handler)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(restart_handler)
+    dispatcher.add_handler(catch_handler)
 
     updater.start_polling()
     j = updater.job_queue
+    autoup = j.run_repeating(encounter, interval=60, first=0)
 
 
 main()
