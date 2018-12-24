@@ -1,11 +1,11 @@
-import datetime
 import math
 import random
 import sys
+import time
 from pprint import pprint
 
-from telegram import ChatAction, ParseMode
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 import logging
 import urllib.request
 import json
@@ -31,18 +31,19 @@ def send_typing_action(func):
     return command_func
 
 
-def getPokeInfo(pokemon):
+def get_poke_info(pokemon):
     poke_json = Pokemon.get_pokemon_json(pokemon)
-    sprites = {k: v for k, v in poke_json[u'sprites'].items() if v != None}
+    sprites = {k: v for k, v in poke_json[u'sprites'].items() if v is not None}
     type_urls = []
-    for type in poke_json[u'types']: type_urls.append(type[u'type'][u'url'])
+    for poke_type in poke_json[u'types']:
+        type_urls.append(poke_type[u'type'][u'url'])
     double_damage_types = []
     half_damage_types = []
     no_damage_types = []
     types = []
-    for type in type_urls:
+    for poke_type in type_urls:
         try:
-            type_json = json.load(EichState.opener.open(type))
+            type_json = json.load(EichState.opener.open(poke_type))
             types.append(type_json[u'name'])
             dd_relations = type_json[u'damage_relations'][u'double_damage_from']
             hd_relations = type_json[u'damage_relations'][u'half_damage_from']
@@ -54,10 +55,17 @@ def getPokeInfo(pokemon):
             for nd_type in nd_relations:
                 no_damage_types.append(nd_type[u'name'])
         except urllib.request.HTTPError as e:
-            logging.error('Type not found: ' + '\n' + type)
+            logging.error('Type not found: ' + '\n' + poke_type)
             raise e
 
     sprite = sprites[random.choice(list(sprites.keys()))]
+    # from PIL import Image
+    # import requests
+    # from io import BytesIO
+    # response = requests.get(sprite)
+    # img = Image.open(BytesIO(response.content))
+    # area = (16, 16, 80, 80)
+    # cropped_sprite = img.crop(area)
     dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
     hd_types_str = ', '.join(map(str, list(set(half_damage_types))))
     nd_types_str = ', '.join(map(str, list(set(no_damage_types))))
@@ -72,7 +80,7 @@ def getPokeInfo(pokemon):
     pprint(dd_types_str)
 
     text = name_str + ' #' + id_str + '\n' + types_str + '\nAttack with:\n' + dd_types_str + '\nDon\'t use:\n' + hd_types_str
-    if no_damage_types != []:
+    if len(no_damage_types) != 0:
         text += '\nor worse:\n' + nd_types_str
     return text, sprite
 
@@ -84,7 +92,7 @@ def info(bot, update):
         pokemon = EichState.names_dict["pokenames"][pokemon]
     pokemon = pokemon.lower()
     try:
-        text, sprite = getPokeInfo(pokemon)
+        text, sprite = get_poke_info(pokemon)
         bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text, parse_mode=ParseMode.MARKDOWN)
     except urllib.request.HTTPError as e:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
@@ -97,8 +105,10 @@ def start(bot, update):
     sprite = 'https://cdn.bulbagarden.net/upload/3/3e/Lets_Go_Pikachu_Eevee_Professor_Oak.png'
     bot.send_photo(chat_id=update.message.chat_id,
                    photo=sprite,
-                   caption='Hello there! Welcome to the world of Pokémon! My name is Oak! People call me the Pokémon Prof!\n'
-                           'I will give you some hints in battle, just type the name of your opponent\'s pokemon in english or german.\n'
+                   caption='Hello there! Welcome to the world of Pokémon! My name is Oak!'
+                           ' People call me the Pokémon Prof!\n'
+                           'I will give you some hints in battle, just type the name of your'
+                           ' opponent\'s pokemon in english or german.\n'
                            'Type /start to show this message.')
 
 
@@ -109,27 +119,94 @@ def restart(bot, update):
 
 
 def catch(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text='I will poke you, if you stumble over a pokemon.')
-    player = Player(update.message.chat_id)
-    EichState.fileAccessor.commit_player(player)
-    EichState.fileAccessor.persist_players()
+    if EichState.fileAccessor.get_player(update.message.chat_id) is None:
+        bot.send_message(chat_id=update.message.chat_id, text='I will poke you, if you stumble over a pokemon.')
+        player = Player(update.message.chat_id)
+        EichState.fileAccessor.commit_player(player)
+        EichState.fileAccessor.persist_players()
+    else:
+        pass
 
 
 def encounter(bot, job):
     players = EichState.fileAccessor.get_players()
-    for player in players:
-        draw = random.random()
-        # TODO: Fix
-        now = datetime.datetime.now().hour * 60 + datetime.datetime.now().minute
-        lastEnc = player.lastEncounter.hour * 60 + player.lastEncounter.minute
-        chance = pow(1 / (24 * 60) * (now - lastEnc), math.e)
-        print(lastEnc, chance)
-        if 0 < draw < chance:
-            bot.send_message(chat_id=player.chatId, text='Encounter!')
-            pokemon_name = EichState.names_dict['pokenames'][
-                random.choice(list(EichState.names_dict['pokenames'].keys()))]
-            Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name))
-        bot.send_message(chat_id=player.chatId, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
+    if players is not None:
+        for player in players:
+            draw = random.random()
+            now = time.time()
+            last_enc = float(player.last_encounter)
+            if player.in_encounter:
+                if now - last_enc >= 900:
+                    # Reset player's catch state
+                    msg_id = player.catch_message_id
+                    bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
+                    player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
+                                    last_encounter=now, in_encounter=False, pokemon_direction=None,
+                                    catch_message_id=None)
+                    EichState.fileAccessor.commit_player(player)
+                    EichState.fileAccessor.persist_players()
+                    print('reset encounter for player ' + str(player.chat_id))
+                continue
+            print('encounter')
+            chance = pow(1 / (24 * 60 * 60) * (now - last_enc), math.e)
+            if 0 < draw < chance:
+                pokemon_name = EichState.names_dict['pokenames'][
+                    random.choice(list(EichState.names_dict['pokenames'].keys()))]
+                pokemon_direction = random.randint(0, 8)
+                Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name))
+                keys = [[InlineKeyboardButton(text='\u2196', callback_data='catch-0'),
+                         InlineKeyboardButton(text='\u2191', callback_data='catch-1'),
+                         InlineKeyboardButton(text='\u2197', callback_data='catch-2')],
+                        [InlineKeyboardButton(text='\u2190', callback_data='catch-3'),
+                         InlineKeyboardButton(text='o', callback_data='catch-4'),
+                         InlineKeyboardButton(text='\u2192', callback_data='catch-5')],
+                        [InlineKeyboardButton(text='\u2199', callback_data='catch-6'),
+                         InlineKeyboardButton(text='\u2193', callback_data='catch-7'),
+                         InlineKeyboardButton(text='\u2198', callback_data='catch-8')]]
+                reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
+                msg = bot.send_message(chat_id=player.chat_id, text='catch Pokemon!',
+                                       reply_markup=reply_markup)
+                # Todo: last_encounter=time.time()
+                player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
+                                last_encounter=last_enc,
+                                in_encounter=True, pokemon_direction=pokemon_direction, catch_message_id=msg.message_id)
+                EichState.fileAccessor.commit_player(player)
+                EichState.fileAccessor.persist_players()
+
+            # bot.send_message(chat_id=player.chat_id, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
+    else:
+        return
+
+
+def callback(bot, update):
+    print('Callback!')
+    data = update.callback_query.data
+    if data.startswith('catch-'):
+        player = EichState.fileAccessor.get_player(update.effective_chat.id)
+        option = int(data[6:])
+        if option == player.pokemon_direction:
+            bot.send_message(chat_id=player.chat_id, text='captured Pokemon!')
+            bot.delete_message(chat_id=player.chat_id, message_id=update.effective_message.message_id)
+            # Todo: last_encounter=time.time()
+            player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
+                            last_encounter=player.last_encounter,
+                            in_encounter=False, pokemon_direction=None, catch_message_id=None)
+            EichState.fileAccessor.commit_player(player)
+            EichState.fileAccessor.persist_players()
+    else:
+        raise ValueError('Invalid callback data: ' + data)
+
+
+def bag(bot, update):
+    chat_id = update.message.chat_id
+    player = EichState.fileAccessor.get_player(chat_id)
+    bot.send_message(chat_id=chat_id, text=player.pokemon.keys())
+
+
+def items(bot, update):
+    chat_id = update.message.chat_id
+    player = EichState.fileAccessor.get_player(chat_id)
+    bot.send_message(chat_id=chat_id, text=player.items.keys())
 
 
 def main():
@@ -141,7 +218,7 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
     args = parser.parse_args()
-    if args.debug == None:
+    if args.debug is None:
         EichState.DEBUG = False
     else:
         EichState.DEBUG = True
@@ -162,15 +239,21 @@ def main():
     dispatcher = updater.dispatcher
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-    # info_handler = CommandHandler('info', info)
-    poke_handler = MessageHandler(Filters.text, info)
-    start_handler = CommandHandler('start', start)
-    restart_handler = CommandHandler('restart', restart)
-    catch_handler = CommandHandler('catch', catch)
+    # poke_handler = CommandHandler('info', info)
+    poke_handler = MessageHandler(Filters.text, callback=info)
+    start_handler = CommandHandler('start', callback=start)
+    restart_handler = CommandHandler('restart', callback=restart)
+    catch_handler = CommandHandler('catch', callback=catch)
+    bag_handler = CommandHandler('bag', callback=bag)
+    items_handler = CommandHandler('items', callback=items)
+    callback_query_handler = CallbackQueryHandler(callback=callback)
     dispatcher.add_handler(poke_handler)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(restart_handler)
     dispatcher.add_handler(catch_handler)
+    dispatcher.add_handler(bag_handler)
+    dispatcher.add_handler(items_handler)
+    dispatcher.add_handler(callback_query_handler)
 
     updater.start_polling()
     j = updater.job_queue

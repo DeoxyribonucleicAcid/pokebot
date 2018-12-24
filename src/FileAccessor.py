@@ -2,9 +2,8 @@ import threading
 import queue
 import os
 import json
-import datetime
 
-from src.Player import Player
+from src.Player import Player, deserialize_player
 
 
 class FileAccessor:
@@ -20,37 +19,47 @@ class FileAccessor:
 
     def persist_players(self):
         while not self.queue.empty():
-            newPlayer = self.queue.get()
-            self.write_to_file(newPlayer)
+            new_player = self.queue.get()
+            self.write_to_file(new_player)
             self.queue.task_done()
 
-    def write_to_file(self, newPlayer: Player):
+    def write_to_file(self, new_player: Player):
         if os.path.isfile('./' + self.playersFile):
-            with open('players.json', mode='w', encoding='utf-8') as f:
+            with open('players.json', encoding='utf-8') as f:
                 players = json.load(f)
-                print(players)
-                if newPlayer.chatId in players:
-                    pass
-                else:
-                    jsonPlayer = {newPlayer.chatId: Player.serialize_player(newPlayer)}
-                    players.append(jsonPlayer)
-                    json.dump(players, f)
+            json_player = {'players': {new_player.chat_id: Player.serialize_player(new_player)}}
+            players.update(json_player)
+            with open('players.json', 'w') as f:
+                json.dump(players, f)
+
+            # if self.get_player(newPlayer.chat_id):
+            #     pass
         else:
             with open('players.json', mode='w', encoding='utf-8') as f:
-                json.dump({str(newPlayer.chatId): Player.serialize_player(newPlayer)}, f)
+                json.dump({'players': {str(new_player.chat_id): Player.serialize_player(new_player)}}, f)
 
     def get_players(self):
         if os.path.isfile('./' + self.playersFile):
             player_list = list()
             with open('players.json', mode='r', encoding='utf-8') as f:
-                players = json.load(f)
+                players = json.load(f)['players']
                 for playerId in players:
-                    playerJson = players[playerId]
-                    player = Player(playerJson['chatId'],
-                                    playerJson['items'],
-                                    playerJson['pokemon'],
-                                    datetime.datetime.strptime(playerJson['lastEncounter'], '%Y-%m-%dT%H:%M:%S.%f'))
+                    player_json = players[playerId]
+                    player = deserialize_player(player_json)
                     player_list.append(player)
             return player_list
+        else:
+            return None
+
+    def get_player(self, player_id):
+        if os.path.isfile('./' + self.playersFile):
+            with open('players.json', mode='r', encoding='utf-8') as f:
+                players = json.load(f)['players']
+                if str(player_id) in list(players.keys()):
+                    player_json = players[str(player_id)]
+                    player = deserialize_player(player_json)
+                    return player
+                else:
+                    return None
         else:
             return None
