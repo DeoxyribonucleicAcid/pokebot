@@ -1,18 +1,18 @@
+import argparse
+import json
+import logging
 import math
+import os.path
 import random
+import setproctitle
 import sys
 import time
+import urllib.request
+from functools import wraps
 from pprint import pprint
 
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
-import logging
-import urllib.request
-import json
-import os.path
-from functools import wraps
-import argparse
-import setproctitle
 
 from src import Pokemon
 from src.EichState import EichState
@@ -59,13 +59,6 @@ def get_poke_info(pokemon):
             raise e
 
     sprite = sprites[random.choice(list(sprites.keys()))]
-    # from PIL import Image
-    # import requests
-    # from io import BytesIO
-    # response = requests.get(sprite)
-    # img = Image.open(BytesIO(response.content))
-    # area = (16, 16, 80, 80)
-    # cropped_sprite = img.crop(area)
     dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
     hd_types_str = ', '.join(map(str, list(set(half_damage_types))))
     nd_types_str = ', '.join(map(str, list(set(no_damage_types))))
@@ -93,7 +86,10 @@ def info(bot, update):
     pokemon = pokemon.lower()
     try:
         text, sprite = get_poke_info(pokemon)
-        bot.send_photo(chat_id=update.message.chat_id, photo=sprite, caption=text, parse_mode=ParseMode.MARKDOWN)
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo=sprite,  # open(Pokemon.get_sprite_dir(pokemon), 'rb'),
+                       caption=text,
+                       parse_mode=ParseMode.MARKDOWN)
     except urllib.request.HTTPError as e:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
     except ConnectionResetError as e:
@@ -142,7 +138,7 @@ def encounter(bot, job):
                     bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
                     player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
                                     last_encounter=now, in_encounter=False, pokemon_direction=None,
-                                    catch_message_id=None)
+                                    catch_message_id=None, catch_pokemon=None)
                     EichState.fileAccessor.commit_player(player)
                     EichState.fileAccessor.persist_players()
                     print('reset encounter for player ' + str(player.chat_id))
@@ -153,7 +149,7 @@ def encounter(bot, job):
                 pokemon_name = EichState.names_dict['pokenames'][
                     random.choice(list(EichState.names_dict['pokenames'].keys()))]
                 pokemon_direction = random.randint(0, 8)
-                Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name))
+                pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
                 keys = [[InlineKeyboardButton(text='\u2196', callback_data='catch-0'),
                          InlineKeyboardButton(text='\u2191', callback_data='catch-1'),
                          InlineKeyboardButton(text='\u2197', callback_data='catch-2')],
@@ -164,12 +160,16 @@ def encounter(bot, job):
                          InlineKeyboardButton(text='\u2193', callback_data='catch-7'),
                          InlineKeyboardButton(text='\u2198', callback_data='catch-8')]]
                 reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
-                msg = bot.send_message(chat_id=player.chat_id, text='catch Pokemon!',
-                                       reply_markup=reply_markup)
+                sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
+                sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
+                Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
+                                                direction=pokemon_direction).save('catch_img.png')
+                msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
+                                     photo=open('catch_img.png', 'rb'), reply_markup=reply_markup)
                 # Todo: last_encounter=time.time()
                 player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
-                                last_encounter=last_enc,
-                                in_encounter=True, pokemon_direction=pokemon_direction, catch_message_id=msg.message_id)
+                                last_encounter=last_enc, in_encounter=True, pokemon_direction=pokemon_direction,
+                                catch_message_id=msg.message_id, catch_pokemon=pokemon)
                 EichState.fileAccessor.commit_player(player)
                 EichState.fileAccessor.persist_players()
 
@@ -188,9 +188,11 @@ def callback(bot, update):
             bot.send_message(chat_id=player.chat_id, text='captured Pokemon!')
             bot.delete_message(chat_id=player.chat_id, message_id=update.effective_message.message_id)
             # Todo: last_encounter=time.time()
+            # Reset Player's encounter
+            player.pokemon.append(player.catch_pokemon)
             player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
                             last_encounter=player.last_encounter,
-                            in_encounter=False, pokemon_direction=None, catch_message_id=None)
+                            in_encounter=False, pokemon_direction=None, catch_message_id=None, catch_pokemon=None)
             EichState.fileAccessor.commit_player(player)
             EichState.fileAccessor.persist_players()
     else:
@@ -200,7 +202,23 @@ def callback(bot, update):
 def bag(bot, update):
     chat_id = update.message.chat_id
     player = EichState.fileAccessor.get_player(chat_id)
-    bot.send_message(chat_id=chat_id, text=player.pokemon.keys())
+    # bot.send_message(chat_id=chat_id, text=str(player.pokemon.keys()))
+    # Pokemon.build_pokemon_bag_image(['charmander', 'ditto', 'hypno', 'charmander',
+    #                                  'charizard', 'charmeleon', 'golbat', 'goldeen',
+    #                                  'seaking', 'granbull', 'aipom', 'spearow',
+    #                                  'blissey', 'ho-oh', 'hoothoot', 'hoppip',
+    #                                  'weedle', 'skiploom', 'houndoom', 'houndour',
+    #                                  'abra'
+    #                                  ]).save('test.png')
+    pokemon_sprite_list = []
+    for i in player.pokemon:
+        sprites = [v[1] for v in i.sprites.items() if v[1] is not None]
+        pokemon_sprite_list.append(sprites[random.randint(0, len(sprites))])
+    Pokemon.build_pokemon_bag_image_dyn(pokemon_sprite_list).save('test.png')
+
+    bot.send_photo(chat_id=update.message.chat_id,
+                   photo=open('test.png', 'rb'),
+                   caption='test', parse_mode=ParseMode.MARKDOWN)
 
 
 def items(bot, update):
