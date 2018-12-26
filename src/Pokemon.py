@@ -110,29 +110,7 @@ def build_pokemon_catch_img(pokemon_sprite, direction):
     return new_im
 
 
-def build_pokemon_bag_image(pokemon_list):
-    dir_list = list()
-    max_row_len = 4
-    for pokemon in pokemon_list:
-        dir_list.append(get_sprite_dir(pokemon))
-
-    images = [Image.open(i) for i in dir_list]  # map(Image.open, dir_list)
-    widths, heights = zip(*(i.size for i in images))
-    max_height = max(heights)
-    width = max(widths) * max_row_len if len(images) >= max_row_len else max(widths) * len(images)
-    height = max(heights) * (math.ceil(len(images) / max_row_len))
-    new_im = Image.new('RGBA', (width, height))
-
-    x_offset = 0
-    for i, im in enumerate(images):
-        if i % max_row_len is 0:
-            x_offset = 0
-        new_im.paste(im, (x_offset, int(i / max_row_len) * max_height))
-        x_offset += im.size[0]
-    return new_im
-
-
-def build_pokemon_bag_image_dyn(pokemon_sprite_list):
+def build_pokemon_bag_image(pokemon_sprite_list):
     max_row_len = 4
 
     images = [get_poke_image(i) for i in pokemon_sprite_list]  # map(Image.open, dir_list)
