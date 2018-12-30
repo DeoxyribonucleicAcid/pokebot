@@ -12,7 +12,7 @@ from src.EichState import EichState
 
 
 class Pokemon:
-    def __init__(self, id, name, moves, health, level, types, sprites, height, weight):
+    def __init__(self, id, name, moves, health, level, types, sprites, height, weight, female, is_shiny):
         self.id = id
         self.name = name
         self.level = level
@@ -22,6 +22,8 @@ class Pokemon:
         self.sprites = sprites
         self.weight = weight
         self.height = height
+        self.female = female
+        self.is_shiny = is_shiny
 
     def serialize_pokemon(self):
         serial = {
@@ -33,21 +35,25 @@ class Pokemon:
             'types': self.types,
             'sprites': self.sprites,
             'weight': self.weight,
-            'height': self.height
+            'height': self.height,
+            'female': self.female,
+            'is_shiny': self.is_shiny
         }
         return serial
 
 
 def deserialize_pokemon(json):
-    pokemon = Pokemon(json['id'],
-                      json['name'],
-                      json['level'],
-                      json['moves'],
-                      json['health'],
-                      json['types'],
-                      json['sprites'],
-                      json['weight'],
-                      json['height'])
+    pokemon = Pokemon(id=json['id'],
+                      name=json['name'],
+                      level=json['level'],
+                      moves=json['moves'],
+                      health=json['health'],
+                      types=json['types'],
+                      sprites=json['sprites'],
+                      weight=json['weight'],
+                      height=json['height'],
+                      female=json['female'],
+                      is_shiny=json['is_shiny'])
     return pokemon
 
 
@@ -65,11 +71,28 @@ def get_pokemon_json(name):
 
 def get_random_poke(poke_json, level_reference):
     id = poke_json['id']
-    moves = []
-    for move in poke_json['moves']:
-        moves.append(move['move'])
     name = poke_json['name']
-    sprites = poke_json['sprites']
+    is_shiny = True if random.random() > 0.98 else False
+    female = True if random.random() > 0.5 else False
+    sprites = {}
+    ps = poke_json['sprites']
+
+    if not female and not is_shiny:
+        sprites = {'front': ps['front_default'], 'back': ps['back_default']}
+    elif not female and is_shiny:
+        sprites = {'front': ps['front_shiny'] if ps['front_shiny'] is not None else ps['front_default'],
+                   'back': ps['back_shiny'] if ps['back_shiny'] is not None else ps['back_default']}
+    elif female and not is_shiny:
+        sprites = {'front': ps['front_female'] if ps['front_female'] is not None else ps['front_default'],
+                   'back': ps['back_female'] if ps['back_female'] is not None else ps['back_default']}
+    elif female and is_shiny:
+        sprites = {
+            'front': ps['front_shiny_female'] if ps['front_shiny_female'] is not None
+            else ps['front_shiny'] if ps['front_shiny'] is not None
+            else ps['front_default'],
+            'back': ps['back_shiny_female'] if ps['back_shiny_female'] is not None
+            else ps['back_shiny'] if ps['back_shiny'] is not None
+            else ps['back_default']}
     height = poke_json['height']
     weight = poke_json['weight']
     health = level_reference * 1.5
@@ -77,13 +100,15 @@ def get_random_poke(poke_json, level_reference):
     types = []
     for type in poke_json[u'types']:
         types.append(type[u'type'])
-    moves = []
+    possible_moves = []
     for move in poke_json[u'moves']:
         move_ = move[u'move']
         move_['level_learned_at'] = move['version_group_details'][0]['level_learned_at']
-        moves.append(move_)
-    pokemon = Pokemon(id=id, name=name, moves=moves, health=health, level=level,
-                      types=types, sprites=sprites, height=height, weight=weight)
+        if move_['level_learned_at'] <= level:
+            possible_moves.append(move_)
+    moves = random.sample(possible_moves, 4)
+    pokemon = Pokemon(id=id, name=name, moves=moves, health=health, level=level, types=types,
+                      sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny)
     return pokemon
 
 

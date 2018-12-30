@@ -1,9 +1,11 @@
-from src.FileAccessor import FileAccessor
 import urllib.request
+
+from src.FileAccessor import FileAccessor
 
 
 class EichState:
     DEBUG = False
+    token = None
     url = 'https://pokeapi.co/api/v2/'
     names_dict = {}
     opener = urllib.request.build_opener()

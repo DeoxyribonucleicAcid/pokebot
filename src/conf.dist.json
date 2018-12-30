@@ -1,3 +1,4 @@
 {
-  "token":"123456:example123token"
+  "token":"123456:example123token",
+  "mongo_db_srv": "mongodb+srv://..."
 }

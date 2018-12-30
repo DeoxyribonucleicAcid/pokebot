@@ -10,6 +10,7 @@ import time
 import urllib.request
 from functools import wraps
 
+import telegram
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 from src import Pokemon
@@ -24,11 +25,18 @@ def prepare_environment():
     parser.set_defaults(which='no_arguments')
     parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
+    if os.path.isfile('./conf.json'):
+        with open('conf.json') as f:
+            config = json.load(f)
+    else:
+        raise EnvironmentError("Config file not existent or wrong format")
     args = parser.parse_args()
     if args.debug is None:
         EichState.DEBUG = False
+        EichState.token = config['token']
     else:
         EichState.DEBUG = True
+        EichState.token = config['test_token']
 
     if os.path.isfile('./name_dict.json'):
         with open('name_dict.json') as f:
@@ -132,7 +140,7 @@ def build_msg_catch(bot, chat_id):
         EichState.fileAccessor.commit_player(player)
         EichState.fileAccessor.persist_players()
     else:
-        pass
+        bot.send_message(chat_id=chat_id, text='I will notify as promised. Type /nocatch to ignore encounters.')
 
 
 def build_msg_encounter(bot):
@@ -146,7 +154,10 @@ def build_msg_encounter(bot):
                 if now - last_enc >= 900:
                     # Reset player's catch state
                     msg_id = player.catch_message_id
-                    bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
+                    try:
+                        bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
+                    except telegram.error.BadRequest as e:
+                        logging.error(e)
                     player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
                                     last_encounter=now, in_encounter=False, pokemon_direction=None,
                                     catch_message_id=None, catch_pokemon=None)
@@ -192,14 +203,17 @@ def build_msg_encounter(bot):
 def build_msg_bag(bot, chat_id):
     player = EichState.fileAccessor.get_player(chat_id)
     pokemon_sprite_list = []
+    caption = ''
     for i in player.pokemon:
         sprites = [v[1] for v in i.sprites.items() if v[1] is not None]
+        caption += '#' + str(i.id) + ' ' + str(i.name) + ' ' + str(int(i.level)) + '\n'
+
         pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
-    Pokemon.build_pokemon_bag_image(pokemon_sprite_list).save('test.png')
+    Pokemon.build_pokemon_bag_image(pokemon_sprite_list).save('/tmp/image_bag_' + str(chat_id) + '.png')
 
     bot.send_photo(chat_id=chat_id,
-                   photo=open('test.png', 'rb'),
-                   caption='test', parse_mode=ParseMode.MARKDOWN)
+                   photo=open('/tmp/image_bag_' + str(chat_id) + '.png', 'rb'),
+                   caption=caption, parse_mode=ParseMode.MARKDOWN)
 
 
 def build_msg_item_bag(bot, update):
@@ -248,3 +262,27 @@ def process_callback(bot, update):
             build_msg_bag(bot, update.effective_message.chat_id)
     else:
         raise ValueError('Invalid callback data: ' + data)
+
+
+def adjust_encounter_chance(bot, chat_id, chance):
+    if chance is None:
+        now = time.time()
+        player = EichState.fileAccessor.get_player(chat_id)
+        chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
+        msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) +
+                                                     '%\nAppend a number like /chance 80 to set it')
+        return
+    if 1 < chance <= 100:
+        chance = chance / 100
+    if 0 <= chance <= 1:
+        now = time.time()
+        adjusted_time = now - (86400 * chance)
+        player = Player.update_player(player=EichState.fileAccessor.get_player(chat_id), last_encounter=adjusted_time)
+        EichState.fileAccessor.commit_player(player=player)
+        EichState.fileAccessor.persist_players()
+
+        chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
+        msg = bot.send_message(chat_id=chat_id, text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
+        print(now, adjusted_time, chance)
+    else:
+        msg = bot.send_message(chat_id=chat_id, text='Bad Input')

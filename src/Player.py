@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 from src import Pokemon
 
@@ -8,7 +9,7 @@ class Player:
                  pokemon_direction=None, catch_message_id=None, catch_pokemon=None):
         self.chat_id = chat_id
         self.items = {} if items is None else items
-        self.pokemon = [] if pokemon is None else pokemon
+        self.pokemon: List[Pokemon.Pokemon] = [] if pokemon is None else pokemon
 
         # Encounter
         self.last_encounter = time.time() if last_encounter is None else last_encounter
@@ -16,6 +17,20 @@ class Player:
         self.pokemon_direction = pokemon_direction
         self.catch_message_id = catch_message_id
         self.catch_pokemon = catch_pokemon
+
+    @classmethod
+    def update_player(cls, player, chat_id=None, items=None, pokemon=None, last_encounter=None,
+                      in_encounter=None, pokemon_direction=None, catch_message_id=None, catch_pokemon=None):
+        return Player(
+            chat_id=player.chat_id if chat_id is None else chat_id,
+            items=player.items if items is None else items,
+            pokemon=player.pokemon if pokemon is None else pokemon,
+            last_encounter=player.last_encounter if last_encounter is None else last_encounter,
+            in_encounter=player.in_encounter if in_encounter is None else in_encounter,
+            pokemon_direction=player.pokemon_direction if pokemon_direction is None else pokemon_direction,
+            catch_message_id=player.catch_message_id if catch_message_id is None else catch_message_id,
+            catch_pokemon=player.catch_pokemon if catch_pokemon is None else catch_pokemon
+        )
 
     def serialize_player(self):
         serial = {'chat_id': self.chat_id,

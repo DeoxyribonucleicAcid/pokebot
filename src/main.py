@@ -1,18 +1,19 @@
-import json
-import os.path
-
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 
 import src.MessageBuilder as MessageBuilder
+from src.EichState import EichState
 
 
 # TODO-List:
 #   items
 #   use items
 #   trade pokemon
-#   mongo-db
-#   config/game menu
+#   mongo-db - wip
+#   config/game menu - wip
 #   edit image background
+#   shiny & female-attribute 4 pokemon done
+#   Bug: new player deletes other players - done
+#   Tests
 
 
 @MessageBuilder.send_typing_action
@@ -43,10 +44,6 @@ def command_handler_catch(bot, update):
     MessageBuilder.build_msg_catch(bot=bot, chat_id=update.message.chat_id)
 
 
-def command_handler_restart(bot, update):
-    MessageBuilder.build_msg_restart(bot=bot, update=update)
-
-
 def command_handler_menu(bot, update):
     MessageBuilder.build_msg_menu(bot=bot, update=update)
 
@@ -55,28 +52,38 @@ def callback_handler(bot, update):
     MessageBuilder.process_callback(bot=bot, update=update)
 
 
+# DEBUG
+def command_handler_restart(bot, update):
+    MessageBuilder.build_msg_restart(bot=bot, update=update)
+
+
+def command_handler_chance(bot, update, args):
+    MessageBuilder.adjust_encounter_chance(bot, update.message.chat_id, int(args[0]) if len(args) > 0 else None)
+
+
 def main():
     print('MAIN')
     MessageBuilder.prepare_environment()
-    if os.path.isfile('./conf.json'):
-        with open('conf.json') as f:
-            config = json.load(f)
-    else:
-        raise EnvironmentError("Config file not existent or wrong format")
-    updater = Updater(token=config["token"])
-    dispatcher = updater.dispatcher
 
+    updater = Updater(token=EichState.token)
+    dispatcher = updater.dispatcher
+    # DEBUG
+    restart_handler = CommandHandler('restart', callback=command_handler_restart)
+    chance_handler = CommandHandler('chance', callback=command_handler_chance, pass_args=True)
+    #
     poke_handler = MessageHandler(Filters.text, callback=command_handler_info)
     start_handler = CommandHandler('start', callback=command_handler_start)
-    restart_handler = CommandHandler('restart', callback=command_handler_restart)
     catch_handler = CommandHandler('catch', callback=command_handler_catch)
     bag_handler = CommandHandler('bag', callback=command_handler_bag)
     items_handler = CommandHandler('items', callback=command_handler_item_bag)
     menu_handler = CommandHandler('menu', callback=command_handler_menu)
     callback_query_handler = CallbackQueryHandler(callback=callback_handler)
+    # DEBUG
+    dispatcher.add_handler(restart_handler)
+    dispatcher.add_handler(chance_handler)
+    #
     dispatcher.add_handler(poke_handler)
     dispatcher.add_handler(start_handler)
-    dispatcher.add_handler(restart_handler)
     dispatcher.add_handler(catch_handler)
     dispatcher.add_handler(bag_handler)
     dispatcher.add_handler(items_handler)

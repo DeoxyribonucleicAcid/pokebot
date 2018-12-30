@@ -1,7 +1,7 @@
-import threading
-import queue
-import os
 import json
+import os
+import queue
+import threading
 
 from src.Player import Player, deserialize_player
 
@@ -24,11 +24,10 @@ class FileAccessor:
             self.queue.task_done()
 
     def write_to_file(self, new_player: Player):
-        if os.path.isfile('./' + self.playersFile):
+        if os.path.isfile('./' + self.playersFile) and os.stat("players.json").st_size > 0:
             with open('players.json', encoding='utf-8') as f:
                 players = json.load(f)
-            json_player = {'players': {new_player.chat_id: Player.serialize_player(new_player)}}
-            players.update(json_player)
+                players['players'][str(new_player.chat_id)] = Player.serialize_player(new_player)
             with open('players.json', 'w') as f:
                 json.dump(players, f)
 
@@ -39,7 +38,7 @@ class FileAccessor:
                 json.dump({'players': {str(new_player.chat_id): Player.serialize_player(new_player)}}, f)
 
     def get_players(self):
-        if os.path.isfile('./' + self.playersFile):
+        if os.path.isfile('./' + self.playersFile) and os.stat("players.json").st_size > 0:
             player_list = list()
             with open('players.json', mode='r', encoding='utf-8') as f:
                 players = json.load(f)['players']
@@ -52,7 +51,7 @@ class FileAccessor:
             return None
 
     def get_player(self, player_id):
-        if os.path.isfile('./' + self.playersFile):
+        if os.path.isfile('./' + self.playersFile) and os.stat("players.json").st_size > 0:
             with open('players.json', mode='r', encoding='utf-8') as f:
                 players = json.load(f)['players']
                 if str(player_id) in list(players.keys()):
