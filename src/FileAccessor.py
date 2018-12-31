@@ -3,7 +3,7 @@ import os
 import queue
 import threading
 
-from src.Player import Player, deserialize_player
+from src.Player import Player, serialize_player, deserialize_player
 
 
 class FileAccessor:
@@ -27,7 +27,7 @@ class FileAccessor:
         if os.path.isfile('./' + self.playersFile) and os.stat("players.json").st_size > 0:
             with open('players.json', encoding='utf-8') as f:
                 players = json.load(f)
-                players['players'][str(new_player.chat_id)] = Player.serialize_player(new_player)
+                players['players'][str(new_player.chat_id)] = serialize_player(new_player)
             with open('players.json', 'w') as f:
                 json.dump(players, f)
 
@@ -35,7 +35,7 @@ class FileAccessor:
             #     pass
         else:
             with open('players.json', mode='w', encoding='utf-8') as f:
-                json.dump({'players': {str(new_player.chat_id): Player.serialize_player(new_player)}}, f)
+                json.dump({'players': {str(new_player.chat_id): serialize_player(new_player)}}, f)
 
     def get_players(self):
         if os.path.isfile('./' + self.playersFile) and os.stat("players.json").st_size > 0:

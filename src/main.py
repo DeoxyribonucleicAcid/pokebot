@@ -11,8 +11,6 @@ from src.EichState import EichState
 #   mongo-db - wip
 #   config/game menu - wip
 #   edit image background
-#   shiny & female-attribute 4 pokemon done
-#   Bug: new player deletes other players - done
 #   Tests
 
 
@@ -42,6 +40,10 @@ def command_handler_start(bot, update):
 
 def command_handler_catch(bot, update):
     MessageBuilder.build_msg_catch(bot=bot, chat_id=update.message.chat_id)
+
+
+def command_handler_no_catch(bot, update):
+    MessageBuilder.build_msg_no_catch(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_menu(bot, update):
@@ -74,6 +76,7 @@ def main():
     poke_handler = MessageHandler(Filters.text, callback=command_handler_info)
     start_handler = CommandHandler('start', callback=command_handler_start)
     catch_handler = CommandHandler('catch', callback=command_handler_catch)
+    no_catch_handler = CommandHandler('nocatch', callback=command_handler_no_catch)
     bag_handler = CommandHandler('bag', callback=command_handler_bag)
     items_handler = CommandHandler('items', callback=command_handler_item_bag)
     menu_handler = CommandHandler('menu', callback=command_handler_menu)
@@ -85,6 +88,7 @@ def main():
     dispatcher.add_handler(poke_handler)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(catch_handler)
+    dispatcher.add_handler(no_catch_handler)
     dispatcher.add_handler(bag_handler)
     dispatcher.add_handler(items_handler)
     dispatcher.add_handler(callback_query_handler)

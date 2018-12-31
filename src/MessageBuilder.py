@@ -134,19 +134,42 @@ def build_msg_restart(bot, update):
 
 
 def build_msg_catch(bot, chat_id):
-    if EichState.fileAccessor.get_player(chat_id) is None:
+    player = EichState.fileAccessor.get_player(chat_id)
+    if player is None:
         bot.send_message(chat_id=chat_id, text='I will poke you, if you stumble over a pokemon.')
-        player = Player(chat_id)
+        player = Player(chat_id, encounters=True)
         EichState.fileAccessor.commit_player(player)
         EichState.fileAccessor.persist_players()
-    else:
+    elif not player.encounters:
+        EichState.fileAccessor.commit_player(Player.update_player(player, encounters=True))
+        EichState.fileAccessor.persist_players()
+        bot.send_message(chat_id=chat_id, text='You are on the watch again. Type /nocatch to ignore encounters.')
+    elif player.encounters:
         bot.send_message(chat_id=chat_id, text='I will notify as promised. Type /nocatch to ignore encounters.')
+    else:
+        raise ('Data Error: Corrupt Player')
+
+
+def build_msg_no_catch(bot, chat_id):
+    player = EichState.fileAccessor.get_player(chat_id)
+    if player is None:
+        bot.send_message(chat_id=chat_id, text='You\'re not on the list. Type /catch to get encounters.')
+    elif not player.encounters:
+        bot.send_message(chat_id=chat_id, text='You\'re not on the list. Type /catch to get encounters.')
+    elif player.encounters:
+        EichState.fileAccessor.commit_player(Player.update_player(player, encounters=False))
+        EichState.fileAccessor.persist_players()
+        bot.send_message(chat_id=chat_id, text='You\'re no longer on the list. Type /catch to get encounters.')
+    else:
+        raise ('Data Error: Corrupt Player')
 
 
 def build_msg_encounter(bot):
     players = EichState.fileAccessor.get_players()
     if players is not None:
         for player in players:
+            if player.encounters is False:
+                continue
             draw = random.random()
             now = time.time()
             last_enc = float(player.last_encounter)
@@ -160,7 +183,7 @@ def build_msg_encounter(bot):
                         logging.error(e)
                     player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
                                     last_encounter=now, in_encounter=False, pokemon_direction=None,
-                                    catch_message_id=None, catch_pokemon=None)
+                                    catch_message_id=None, catch_pokemon=None, encounters=player.encounters)
                     EichState.fileAccessor.commit_player(player)
                     EichState.fileAccessor.persist_players()
                     print('reset encounter for player ' + str(player.chat_id))
@@ -191,7 +214,7 @@ def build_msg_encounter(bot):
                 # Todo: last_encounter=time.time()
                 player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
                                 last_encounter=last_enc, in_encounter=True, pokemon_direction=pokemon_direction,
-                                catch_message_id=msg.message_id, catch_pokemon=pokemon)
+                                catch_message_id=msg.message_id, catch_pokemon=pokemon, encounters=player.encounters)
                 EichState.fileAccessor.commit_player(player)
                 EichState.fileAccessor.persist_players()
 
@@ -245,8 +268,8 @@ def process_callback(bot, update):
             # Reset Player's encounter
             player.pokemon.append(player.catch_pokemon)
             player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
-                            last_encounter=player.last_encounter,
-                            in_encounter=False, pokemon_direction=None, catch_message_id=None, catch_pokemon=None)
+                            last_encounter=player.last_encounter, in_encounter=False, pokemon_direction=None,
+                            catch_message_id=None, catch_pokemon=None, encounters=player.encounters)
             EichState.fileAccessor.commit_player(player)
             EichState.fileAccessor.persist_players()
     elif data.startswith('menu-'):
@@ -275,12 +298,13 @@ def adjust_encounter_chance(bot, chat_id, chance):
     if 1 < chance <= 100:
         chance = chance / 100
     if 0 <= chance <= 1:
+        time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
         now = time.time()
-        adjusted_time = now - (86400 * chance)
+        adjusted_time = now - time_elapsed
         player = Player.update_player(player=EichState.fileAccessor.get_player(chat_id), last_encounter=adjusted_time)
         EichState.fileAccessor.commit_player(player=player)
         EichState.fileAccessor.persist_players()
-
+        # sqrt(86400^e * 0.2, e)
         chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
         msg = bot.send_message(chat_id=chat_id, text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
         print(now, adjusted_time, chance)
