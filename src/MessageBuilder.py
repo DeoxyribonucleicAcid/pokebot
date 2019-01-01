@@ -136,10 +136,10 @@ def build_msg_restart(bot, update):
 def build_msg_catch(bot, chat_id):
     player = EichState.fileAccessor.get_player(chat_id)
     if player is None:
-        bot.send_message(chat_id=chat_id, text='I will poke you, if you stumble over a pokemon.')
         player = Player(chat_id, encounters=True)
         EichState.fileAccessor.commit_player(player)
         EichState.fileAccessor.persist_players()
+        bot.send_message(chat_id=chat_id, text='I will poke you, if you stumble over a pokemon.')
     elif not player.encounters:
         EichState.fileAccessor.commit_player(Player.update_player(player, encounters=True))
         EichState.fileAccessor.persist_players()
@@ -228,15 +228,22 @@ def build_msg_bag(bot, chat_id):
     pokemon_sprite_list = []
     caption = ''
     for i in player.pokemon:
-        sprites = [v[1] for v in i.sprites.items() if v[1] is not None]
+        # sprites = [v[1] for v in i.sprites.items() if v[1] is not None]
         caption += '#' + str(i.id) + ' ' + str(i.name) + ' ' + str(int(i.level)) + '\n'
+        # pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
+        pokemon_sprite_list.append(i.sprites['front'])
 
-        pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
-    Pokemon.build_pokemon_bag_image(pokemon_sprite_list).save('/tmp/image_bag_' + str(chat_id) + '.png')
+    Image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
+    if Image is not None:
+        Image.save('/tmp/image_bag_' + str(chat_id) + '.png')
 
-    bot.send_photo(chat_id=chat_id,
-                   photo=open('/tmp/image_bag_' + str(chat_id) + '.png', 'rb'),
-                   caption=caption, parse_mode=ParseMode.MARKDOWN)
+        bot.send_photo(chat_id=chat_id,
+                       photo=open('/tmp/image_bag_' + str(chat_id) + '.png', 'rb'),
+                       caption=caption, parse_mode=ParseMode.MARKDOWN)
+    else:
+        bot.send_message(chat_id=chat_id,
+                         text='Your bag is empty, catch some pokemon!')
+
 
 
 def build_msg_item_bag(bot, update):

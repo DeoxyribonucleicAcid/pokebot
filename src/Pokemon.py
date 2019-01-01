@@ -130,12 +130,18 @@ def build_pokemon_catch_img(pokemon_sprite, direction):
     width, height = image.size
     width_total = edge_length * width
     height_total = edge_length * height
-    new_im = Image.new('RGBA', (width_total, height_total))
-    new_im.paste(image, (width * (direction % edge_length), height * int(direction / edge_length)))
-    return new_im
+    alpha = image.convert('RGBA').split()[-1]
+    background = Image.open('../res/img/background1.png')
+    w, h = background.size
+    background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
+    background.thumbnail((width_total, height_total), Image.ANTIALIAS)
+    background.paste(image, (width * (direction % edge_length), height * int(direction / edge_length)), mask=alpha)
+    return background
 
 
 def build_pokemon_bag_image(pokemon_sprite_list):
+    if len(pokemon_sprite_list) is 0:
+        return None
     max_row_len = 4
 
     images = [get_poke_image(i) for i in pokemon_sprite_list]  # map(Image.open, dir_list)
@@ -149,8 +155,24 @@ def build_pokemon_bag_image(pokemon_sprite_list):
     for i, im in enumerate(images):
         if i % max_row_len is 0:
             x_offset = 0
-        new_im.paste(im, (x_offset, int(i / max_row_len) * max_height))
+
+        alpha = im.convert('RGBA').split()[-1]
+        if i % 2 is 0:
+            bg = Image.new("RGBA", im.size, (255, 247, 153, 255))
+        else:
+            bg = Image.new("RGBA", im.size, (226, 215, 74, 255))
+        bg.paste(im, mask=alpha)
+        new_im.paste(bg, (x_offset, int(i / max_row_len) * max_height))
         x_offset += im.size[0]
+
+    for i in range(max_row_len - (len(pokemon_sprite_list) % max_row_len)):
+        if i % 2 is 0:
+            bg = Image.new("RGBA", images[0].size, (226, 215, 74, 255))
+        else:
+            bg = Image.new("RGBA", images[0].size, (255, 247, 153, 255))
+        new_im.paste(bg, (x_offset, int(len(pokemon_sprite_list) / max_row_len) * max_height))
+        x_offset += images[0].size[0]
+
     return new_im
 
 
