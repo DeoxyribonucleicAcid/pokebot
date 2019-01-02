@@ -8,9 +8,10 @@ from src.EichState import EichState
 #   items
 #   use items
 #   trade pokemon
-#   mongo-db - wip
+#   mongo-db - done
+#   Improve player updates (mongodb)
 #   config/game menu - wip
-#   edit image background
+#   edit image background - done
 #   Tests
 
 

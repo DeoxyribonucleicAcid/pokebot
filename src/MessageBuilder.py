@@ -13,7 +13,7 @@ from functools import wraps
 import telegram
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
-from src import Pokemon
+from src import Pokemon, DBAccessor
 from src.EichState import EichState
 from src.Player import Player
 
@@ -134,15 +134,13 @@ def build_msg_restart(bot, update):
 
 
 def build_msg_catch(bot, chat_id):
-    player = EichState.fileAccessor.get_player(chat_id)
+    player = DBAccessor.get_player(chat_id)
     if player is None:
         player = Player(chat_id, encounters=True)
-        EichState.fileAccessor.commit_player(player)
-        EichState.fileAccessor.persist_players()
+        DBAccessor.insert_new_player(player=player)
         bot.send_message(chat_id=chat_id, text='I will poke you, if you stumble over a pokemon.')
     elif not player.encounters:
-        EichState.fileAccessor.commit_player(Player.update_player(player, encounters=True))
-        EichState.fileAccessor.persist_players()
+        DBAccessor.update_player(player.chat_id, {'$set': {'encounters': True}})
         bot.send_message(chat_id=chat_id, text='You are on the watch again. Type /nocatch to ignore encounters.')
     elif player.encounters:
         bot.send_message(chat_id=chat_id, text='I will notify as promised. Type /nocatch to ignore encounters.')
@@ -151,80 +149,69 @@ def build_msg_catch(bot, chat_id):
 
 
 def build_msg_no_catch(bot, chat_id):
-    player = EichState.fileAccessor.get_player(chat_id)
+    player = DBAccessor.get_player(chat_id)
     if player is None:
         bot.send_message(chat_id=chat_id, text='You\'re not on the list. Type /catch to get encounters.')
     elif not player.encounters:
         bot.send_message(chat_id=chat_id, text='You\'re not on the list. Type /catch to get encounters.')
     elif player.encounters:
-        EichState.fileAccessor.commit_player(Player.update_player(player, encounters=False))
-        EichState.fileAccessor.persist_players()
+        DBAccessor.update_player(player.chat_id, {'$set': {'encounters': False}})
         bot.send_message(chat_id=chat_id, text='You\'re no longer on the list. Type /catch to get encounters.')
     else:
         raise ('Data Error: Corrupt Player')
 
 
 def build_msg_encounter(bot):
-    players = EichState.fileAccessor.get_players()
-    if players is not None:
-        for player in players:
-            if player.encounters is False:
-                continue
-            draw = random.random()
-            now = time.time()
-            last_enc = float(player.last_encounter)
-            if player.in_encounter:
-                if now - last_enc >= 900:
-                    # Reset player's catch state
-                    msg_id = player.catch_message_id
-                    try:
-                        bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
-                    except telegram.error.BadRequest as e:
-                        logging.error(e)
-                    player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
-                                    last_encounter=now, in_encounter=False, pokemon_direction=None,
-                                    catch_message_id=None, catch_pokemon=None, encounters=player.encounters)
-                    EichState.fileAccessor.commit_player(player)
-                    EichState.fileAccessor.persist_players()
-                    print('reset encounter for player ' + str(player.chat_id))
-                continue
-            print('encounter')
-            chance = pow(1 / (24 * 60 * 60) * (now - last_enc), math.e)
-            if 0 < draw < chance:
-                pokemon_name = EichState.names_dict['pokenames'][
-                    random.choice(list(EichState.names_dict['pokenames'].keys()))]
-                pokemon_direction = random.randint(0, 8)
-                pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
-                keys = [[InlineKeyboardButton(text='\u2196', callback_data='catch-0'),
-                         InlineKeyboardButton(text='\u2191', callback_data='catch-1'),
-                         InlineKeyboardButton(text='\u2197', callback_data='catch-2')],
-                        [InlineKeyboardButton(text='\u2190', callback_data='catch-3'),
-                         InlineKeyboardButton(text='o', callback_data='catch-4'),
-                         InlineKeyboardButton(text='\u2192', callback_data='catch-5')],
-                        [InlineKeyboardButton(text='\u2199', callback_data='catch-6'),
-                         InlineKeyboardButton(text='\u2193', callback_data='catch-7'),
-                         InlineKeyboardButton(text='\u2198', callback_data='catch-8')]]
-                reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
-                sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
-                sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
-                Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
-                                                direction=pokemon_direction).save('catch_img.png')
-                msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
-                                     photo=open('catch_img.png', 'rb'), reply_markup=reply_markup)
-                # Todo: last_encounter=time.time()
-                player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
-                                last_encounter=last_enc, in_encounter=True, pokemon_direction=pokemon_direction,
-                                catch_message_id=msg.message_id, catch_pokemon=pokemon, encounters=player.encounters)
-                EichState.fileAccessor.commit_player(player)
-                EichState.fileAccessor.persist_players()
+    cursor = DBAccessor.get_encounter_players_cursor()
+    for player in cursor:
+        draw = random.random()
+        now = time.time()
+        last_enc = float(player.last_encounter)
+        if player.in_encounter:
+            if now - last_enc >= 900:
+                # Reset player's catch state
+                msg_id = player.catch_message_id
+                try:
+                    bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
+                except telegram.error.BadRequest as e:
+                    logging.error(e)
+                update = {'$set': {'last_encounter': now, 'in_encounter': False, 'pokemon_direction': None,
+                                   'catch_message_id': None, 'catch_pokemon': None}}
+                DBAccessor.update_player(_id=player.chat_id, update=update)
+                print('reset encounter for player ' + str(player.chat_id))
+            continue
+        chance = pow(1 / (24 * 60 * 60) * (now - last_enc), math.e)
+        if 0 < draw < chance:
+            pokemon_name = EichState.names_dict['pokenames'][
+                random.choice(list(EichState.names_dict['pokenames'].keys()))]
+            pokemon_direction = random.randint(0, 8)
+            pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
+            keys = [[InlineKeyboardButton(text='\u2196', callback_data='catch-0'),
+                     InlineKeyboardButton(text='\u2191', callback_data='catch-1'),
+                     InlineKeyboardButton(text='\u2197', callback_data='catch-2')],
+                    [InlineKeyboardButton(text='\u2190', callback_data='catch-3'),
+                     InlineKeyboardButton(text='o', callback_data='catch-4'),
+                     InlineKeyboardButton(text='\u2192', callback_data='catch-5')],
+                    [InlineKeyboardButton(text='\u2199', callback_data='catch-6'),
+                     InlineKeyboardButton(text='\u2193', callback_data='catch-7'),
+                     InlineKeyboardButton(text='\u2198', callback_data='catch-8')]]
+            reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
+            sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
+            sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
+            Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
+                                            direction=pokemon_direction).save('catch_img.png')
+            msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
+                                 photo=open('catch_img.png', 'rb'), reply_markup=reply_markup)
+            # Todo: last_encounter=time.time()
+            update = {'$set': {'last_encounter': last_enc, 'in_encounter': True, 'pokemon_direction': pokemon_direction,
+                               'catch_message_id': msg.message_id, 'catch_pokemon': pokemon.serialize_pokemon()}}
+            DBAccessor.update_player(_id=player.chat_id, update=update)
 
-            # bot.send_message(chat_id=player.chat_id, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
-    else:
-        return
+        # bot.send_message(chat_id=player.chat_id, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
 
 
 def build_msg_bag(bot, chat_id):
-    player = EichState.fileAccessor.get_player(chat_id)
+    player = DBAccessor.get_player(chat_id)
     pokemon_sprite_list = []
     caption = ''
     for i in player.pokemon:
@@ -245,10 +232,9 @@ def build_msg_bag(bot, chat_id):
                          text='Your bag is empty, catch some pokemon!')
 
 
-
 def build_msg_item_bag(bot, update):
     chat_id = update.message.chat_id
-    player = EichState.fileAccessor.get_player(chat_id)
+    player = DBAccessor.get_player(chat_id)
     bot.send_message(chat_id=chat_id, text=player.items.keys())
 
 
@@ -266,7 +252,7 @@ def process_callback(bot, update):
     print('Callback!')
     data = update.callback_query.data
     if data.startswith('catch-'):
-        player = EichState.fileAccessor.get_player(update.effective_chat.id)
+        player = DBAccessor.get_player(update.effective_chat.id)
         option = int(data[6:])
         if option == player.pokemon_direction:
             bot.send_message(chat_id=player.chat_id, text='captured Pokemon!')
@@ -274,11 +260,9 @@ def process_callback(bot, update):
             # Todo: last_encounter=time.time()
             # Reset Player's encounter
             player.pokemon.append(player.catch_pokemon)
-            player = Player(chat_id=player.chat_id, items=player.items, pokemon=player.pokemon,
-                            last_encounter=player.last_encounter, in_encounter=False, pokemon_direction=None,
-                            catch_message_id=None, catch_pokemon=None, encounters=player.encounters)
-            EichState.fileAccessor.commit_player(player)
-            EichState.fileAccessor.persist_players()
+            update = {'$set': {'pokemon': [i.serialize_pokemon() for i in player.pokemon], 'in_encounter': False,
+                               'pokemon_direction': None, 'catch_message_id': None, 'catch_pokemon': None}}
+            DBAccessor.update_player(_id=player.chat_id, update=update)
     elif data.startswith('menu-'):
         if data == 'menu-item':
             pass
@@ -297,7 +281,7 @@ def process_callback(bot, update):
 def adjust_encounter_chance(bot, chat_id, chance):
     if chance is None:
         now = time.time()
-        player = EichState.fileAccessor.get_player(chat_id)
+        player = DBAccessor.get_player(chat_id)
         chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
         msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) +
                                                      '%\nAppend a number like /chance 80 to set it')
@@ -308,9 +292,8 @@ def adjust_encounter_chance(bot, chat_id, chance):
         time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
         now = time.time()
         adjusted_time = now - time_elapsed
-        player = Player.update_player(player=EichState.fileAccessor.get_player(chat_id), last_encounter=adjusted_time)
-        EichState.fileAccessor.commit_player(player=player)
-        EichState.fileAccessor.persist_players()
+        update = {'$set': {'last_encounter': adjusted_time}}
+        DBAccessor.update_player(_id=chat_id, update=update)
         # sqrt(86400^e * 0.2, e)
         chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
         msg = bot.send_message(chat_id=chat_id, text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')

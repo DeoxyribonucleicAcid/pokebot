@@ -106,7 +106,8 @@ def get_random_poke(poke_json, level_reference):
         move_['level_learned_at'] = move['version_group_details'][0]['level_learned_at']
         if move_['level_learned_at'] <= level:
             possible_moves.append(move_)
-    moves = random.sample(possible_moves, 4)
+    max_moves = 4 if len(possible_moves) > 4 else len(possible_moves)
+    moves = random.sample(possible_moves, max_moves)
     pokemon = Pokemon(id=id, name=name, moves=moves, health=health, level=level, types=types,
                       sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny)
     return pokemon

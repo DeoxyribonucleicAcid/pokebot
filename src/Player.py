@@ -36,7 +36,7 @@ class Player:
 
 
 def serialize_player(player: Player):
-    serial = {'chat_id': player.chat_id,
+    serial = {'_id': player.chat_id,
               'items': player.items,
               'pokemon': [i.serialize_pokemon() for i in player.pokemon],
               'last_encounter': player.last_encounter,
@@ -49,7 +49,7 @@ def serialize_player(player: Player):
 
 
 def deserialize_player(json):
-    player = Player(json['chat_id'],
+    player = Player(json['_id'],
                     json['items'],
                     [Pokemon.deserialize_pokemon(i) for i in json['pokemon']],
                     json['last_encounter'],

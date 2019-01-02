@@ -1,6 +1,36 @@
+import json
+import os
 import urllib.request
 
-from src.FileAccessor import FileAccessor
+import pymongo
+
+
+#from src.FileAccessor import FileAccessor
+
+
+def db_setup():
+    if os.path.isfile('./conf.json'):
+        with open('conf.json') as f:
+            config = json.load(f)
+    else:
+        raise EnvironmentError("Config file not existent or wrong format")
+    client = pymongo.MongoClient(config["mongo_db_srv"])
+    test = client.test
+    db = client["database"]
+    print(client.list_database_names())
+
+    player_collection = db["player"]
+    #player_collection.insert_one({"_id": 00000000})
+
+    if "database" in client.list_database_names():
+        print("The database exists.")
+    else:
+        raise EnvironmentError('Database does not exist!')
+    if "player" in db.list_collection_names():
+        print("The collection exists.")
+    else:
+        raise EnvironmentError('Collection does not exist!')
+    return db, player_collection
 
 
 class EichState:
@@ -11,4 +41,5 @@ class EichState:
     opener = urllib.request.build_opener()
     opener.addheaders = [('User-Agent',
                           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.2 Safari/602.3.12')]
-    fileAccessor = FileAccessor()
+    #fileAccessor = FileAccessor()
+    db, player_col = db_setup()
