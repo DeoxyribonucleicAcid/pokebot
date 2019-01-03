@@ -8,11 +8,11 @@ from src.EichState import EichState
 #   items
 #   use items
 #   trade pokemon
-#   mongo-db - done
-#   Improve player updates (mongodb)
+#   duels
+#   Improve player updates (mongodb) - done
 #   config/game menu - wip
-#   edit image background - done
 #   Tests
+#   German
 
 
 @MessageBuilder.send_typing_action

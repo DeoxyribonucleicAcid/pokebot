@@ -167,10 +167,10 @@ def build_pokemon_bag_image(pokemon_sprite_list):
         x_offset += im.size[0]
 
     for i in range(max_row_len - (len(pokemon_sprite_list) % max_row_len)):
-        if i % 2 is 0:
-            bg = Image.new("RGBA", images[0].size, (226, 215, 74, 255))
-        else:
+        if (len(pokemon_sprite_list) + i) % 2 is 0:
             bg = Image.new("RGBA", images[0].size, (255, 247, 153, 255))
+        else:
+            bg = Image.new("RGBA", images[0].size, (226, 215, 74, 255))
         new_im.paste(bg, (x_offset, int(len(pokemon_sprite_list) / max_row_len) * max_height))
         x_offset += images[0].size[0]
 

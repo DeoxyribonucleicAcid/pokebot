@@ -175,8 +175,11 @@ def build_msg_encounter(bot):
                     bot.delete_message(chat_id=player.chat_id, message_id=msg_id)
                 except telegram.error.BadRequest as e:
                     logging.error(e)
-                update = {'$set': {'last_encounter': now, 'in_encounter': False, 'pokemon_direction': None,
-                                   'catch_message_id': None, 'catch_pokemon': None}}
+                update = DBAccessor.get_update_query(last_encounter=now,
+                                                     in_encounter=False,
+                                                     pokemon_direction=None,
+                                                     catch_message_id=None,
+                                                     catch_pokemon=None)
                 DBAccessor.update_player(_id=player.chat_id, update=update)
                 print('reset encounter for player ' + str(player.chat_id))
             continue
@@ -203,8 +206,11 @@ def build_msg_encounter(bot):
             msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
                                  photo=open('catch_img.png', 'rb'), reply_markup=reply_markup)
             # Todo: last_encounter=time.time()
-            update = {'$set': {'last_encounter': last_enc, 'in_encounter': True, 'pokemon_direction': pokemon_direction,
-                               'catch_message_id': msg.message_id, 'catch_pokemon': pokemon.serialize_pokemon()}}
+            update = DBAccessor.get_update_query(last_encounter=last_enc,
+                                                 in_encounter=True,
+                                                 pokemon_direction=pokemon_direction,
+                                                 catch_message_id=msg.message_id,
+                                                 catch_pokemon=pokemon)
             DBAccessor.update_player(_id=player.chat_id, update=update)
 
         # bot.send_message(chat_id=player.chat_id, text='current chance: ' + str(chance) + ' draw: ' + str(draw))
@@ -292,8 +298,7 @@ def adjust_encounter_chance(bot, chat_id, chance):
         time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
         now = time.time()
         adjusted_time = now - time_elapsed
-        update = {'$set': {'last_encounter': adjusted_time}}
-        DBAccessor.update_player(_id=chat_id, update=update)
+        DBAccessor.update_player(_id=chat_id, update=DBAccessor.get_update_query(last_encounter=adjusted_time))
         # sqrt(86400^e * 0.2, e)
         chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
         msg = bot.send_message(chat_id=chat_id, text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
