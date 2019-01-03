@@ -32,7 +32,7 @@ def prepare_environment():
     else:
         raise EnvironmentError("Config file not existent or wrong format")
     args = parser.parse_args()
-    if args.debug is None:
+    if not args.debug:
         EichState.DEBUG = False
         EichState.token = config['token']
     else:
