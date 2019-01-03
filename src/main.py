@@ -9,6 +9,8 @@ from src.EichState import EichState
 #   use items
 #   trade pokemon
 #   duels
+#   inspect pokemon
+#   train pokemon
 #   Improve player updates (mongodb) - done
 #   config/game menu - wip
 #   Tests

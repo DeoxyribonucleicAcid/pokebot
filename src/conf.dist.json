@@ -1,4 +1,5 @@
 {
   "token":"123456:example123token",
-  "mongo_db_srv": "mongodb+srv://..."
+  "mongo_db_srv": "mongodb+srv://...",
+  "test_token": "123456:ignore_if_no_debug"
 }
