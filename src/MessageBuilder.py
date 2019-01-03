@@ -1,21 +1,22 @@
 import argparse
 import json
 import logging
-import math
 import os
 import random
-import setproctitle
 import sys
 import time
 import urllib.request
 from functools import wraps
 
+import math
+import setproctitle
 import telegram
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
-from src import Pokemon, DBAccessor
-from src.EichState import EichState
-from src.Player import Player
+import DBAccessor
+import Pokemon
+from EichState import EichState
+from Player import Player
 
 
 def prepare_environment():

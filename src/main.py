@@ -1,7 +1,7 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 
-import src.MessageBuilder as MessageBuilder
-from src.EichState import EichState
+import MessageBuilder
+from EichState import EichState
 
 
 # TODO-List:

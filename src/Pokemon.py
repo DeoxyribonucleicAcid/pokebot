@@ -1,14 +1,14 @@
 import json
 import logging
-import math
 import random
 import urllib.request
 from io import BytesIO
 
+import math
 import requests
 from PIL import Image
 
-from src.EichState import EichState
+from EichState import EichState
 
 
 class Pokemon:

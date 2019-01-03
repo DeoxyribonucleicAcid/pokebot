@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from src import Pokemon
+import Pokemon
 
 
 class Player:

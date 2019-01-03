@@ -1,5 +1,5 @@
-import src.Player as Player
-from src.EichState import EichState
+import Player
+from EichState import EichState
 
 
 def insert_new_player(player: Player.Player):
