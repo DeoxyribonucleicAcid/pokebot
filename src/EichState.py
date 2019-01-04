@@ -10,7 +10,7 @@ import pymongo
 
 def db_setup():
     if os.path.isfile(os.path.dirname(os.path.abspath(__file__))+'/conf.json'):
-        with open('conf.json') as f:
+        with open(os.path.dirname(os.path.abspath(__file__))+'/conf.json') as f:
             config = json.load(f)
     else:
         raise EnvironmentError("Config file not existent or wrong format")

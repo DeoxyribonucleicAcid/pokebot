@@ -27,7 +27,7 @@ def prepare_environment():
     parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
     if os.path.isfile(os.path.dirname(os.path.abspath(__file__)) + '/conf.json'):
-        with open('conf.json') as f:
+        with open(os.path.dirname(os.path.abspath(__file__))+'/conf.json') as f:
             config = json.load(f)
     else:
         raise EnvironmentError("Config file not existent or wrong format")
@@ -40,7 +40,7 @@ def prepare_environment():
         EichState.token = config['test_token']
 
     if os.path.isfile(os.path.dirname(os.path.abspath(__file__)) + '/name_dict.json'):
-        with open('name_dict.json') as f:
+        with open(os.path.dirname(os.path.abspath(__file__)) + '/name_dict.json') as f:
             EichState.names_dict = json.load(f)
     else:
         raise EnvironmentError("Names file not existent or wrong format")
