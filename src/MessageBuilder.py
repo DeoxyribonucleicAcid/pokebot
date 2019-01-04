@@ -45,6 +45,10 @@ def prepare_environment():
             EichState.names_dict = json.load(f)
     else:
         raise EnvironmentError("Names file not existent or wrong format")
+
+    directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/tmp'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 
