@@ -49,28 +49,3 @@ def get_update_query(chat_id=None, items=None, pokemon=None, last_encounter=None
     if catch_pokemon is not None: query['$set']['catch_pokemon'] = catch_pokemon.serialize_pokemon()
     if encounters is not None: query['$set']['encounters'] = encounters
     return query
-
-# import random
-# from src import Pokemon
-# from pprint import pprint
-# from src import MessageBuilder
-#
-# MessageBuilder.prepare_environment()
-# pokemon_name = EichState.names_dict['pokenames'][
-#     random.choice(list(EichState.names_dict['pokenames'].keys()))]
-# pokemon_direction = random.randint(0, 8)
-# pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
-# player = Player.Player(chat_id=12345678, items={}, pokemon=[pokemon],
-#                        last_encounter=23456789.643653, in_encounter=False, pokemon_direction=None,
-#                        catch_message_id=None, catch_pokemon=None, encounters=False)
-#
-# delete_player(12345678)
-#
-# insert_new_player(player=player)
-#
-# pprint(get_player(12345678))
-#
-# update_player(12345678, {'$set': {'encounters': True}})
-#
-# pprint(get_player(12345678))
-# delete_player(12345678)

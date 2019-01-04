@@ -1,15 +1,15 @@
 import argparse
 import json
 import logging
+import math
 import os
 import random
+import setproctitle
 import sys
 import time
 import urllib.request
 from functools import wraps
 
-import math
-import setproctitle
 import telegram
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -107,8 +107,9 @@ def build_msg_info(bot, update):
     pokemon = pokemon.lower()
     try:
         text, sprite = get_poke_info(pokemon)
+        Pokemon.get_pokemon_portrait_image(sprite).save('/tmp/image_info_' + str(update.message.chat_id) + '.png')
         bot.send_photo(chat_id=update.message.chat_id,
-                       photo=sprite,  # open(Pokemon.get_sprite_dir(pokemon), 'rb'),
+                       photo=open('/tmp/image_info_' + str(update.message.chat_id) + '.png', 'rb'),
                        caption=text,
                        parse_mode=ParseMode.MARKDOWN)
     except urllib.request.HTTPError as e:
@@ -203,11 +204,12 @@ def build_msg_encounter(bot):
             sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
             sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
             Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
-                                            direction=pokemon_direction).save('catch_img.png')
+                                            direction=pokemon_direction).save(
+                'catch_img_' + str(player.chat_id) + '.png')
             msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
-                                 photo=open('catch_img.png', 'rb'), reply_markup=reply_markup)
-            # Todo: last_encounter=time.time()
-            update = DBAccessor.get_update_query(last_encounter=last_enc,
+                                 photo=open('catch_img_' + str(player.chat_id) + '.png', 'rb'),
+                                 reply_markup=reply_markup)
+            update = DBAccessor.get_update_query(last_encounter=now,
                                                  in_encounter=True,
                                                  pokemon_direction=pokemon_direction,
                                                  catch_message_id=msg.message_id,
@@ -227,9 +229,9 @@ def build_msg_bag(bot, chat_id):
         # pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
         pokemon_sprite_list.append(i.sprites['front'])
 
-    Image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
-    if Image is not None:
-        Image.save('/tmp/image_bag_' + str(chat_id) + '.png')
+    image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
+    if image is not None:
+        image.save('/tmp/image_bag_' + str(chat_id) + '.png')
 
         bot.send_photo(chat_id=chat_id,
                        photo=open('/tmp/image_bag_' + str(chat_id) + '.png', 'rb'),
@@ -262,13 +264,15 @@ def process_callback(bot, update):
         player = DBAccessor.get_player(update.effective_chat.id)
         option = int(data[6:])
         if option == player.pokemon_direction:
-            bot.send_message(chat_id=player.chat_id, text='captured Pokemon!')
+            bot.send_message(chat_id=player.chat_id, text='captured ' + player.catch_pokemon.name + '!')
             bot.delete_message(chat_id=player.chat_id, message_id=update.effective_message.message_id)
-            # Todo: last_encounter=time.time()
             # Reset Player's encounter
             player.pokemon.append(player.catch_pokemon)
-            update = {'$set': {'pokemon': [i.serialize_pokemon() for i in player.pokemon], 'in_encounter': False,
-                               'pokemon_direction': None, 'catch_message_id': None, 'catch_pokemon': None}}
+            update = DBAccessor.get_update_query(pokemon=player.pokemon,
+                                                 in_encounter=False,
+                                                 pokemon_direction=None,
+                                                 catch_message_id=None,
+                                                 catch_pokemon=None)
             DBAccessor.update_player(_id=player.chat_id, update=update)
     elif data.startswith('menu-'):
         if data == 'menu-item':
@@ -286,23 +290,30 @@ def process_callback(bot, update):
 
 
 def adjust_encounter_chance(bot, chat_id, chance):
-    if chance is None:
+    if EichState.DEBUG:
+        if chance is None:
+            now = time.time()
+            player = DBAccessor.get_player(chat_id)
+            chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
+            msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) +
+                                                         '%\nAppend a number like /chance 80 to set it')
+            return
+        if 1 < chance <= 100:
+            chance = chance / 100
+        if 0 <= chance <= 1:
+            time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
+            now = time.time()
+            adjusted_time = now - time_elapsed
+            DBAccessor.update_player(_id=chat_id, update=DBAccessor.get_update_query(last_encounter=adjusted_time))
+            # sqrt(86400^e * 0.2, e)
+            chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
+            msg = bot.send_message(chat_id=chat_id,
+                                   text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
+            print(now, adjusted_time, chance)
+        else:
+            msg = bot.send_message(chat_id=chat_id, text='Bad Input')
+    else:
         now = time.time()
         player = DBAccessor.get_player(chat_id)
         chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
-        msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) +
-                                                     '%\nAppend a number like /chance 80 to set it')
-        return
-    if 1 < chance <= 100:
-        chance = chance / 100
-    if 0 <= chance <= 1:
-        time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
-        now = time.time()
-        adjusted_time = now - time_elapsed
-        DBAccessor.update_player(_id=chat_id, update=DBAccessor.get_update_query(last_encounter=adjusted_time))
-        # sqrt(86400^e * 0.2, e)
-        chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
-        msg = bot.send_message(chat_id=chat_id, text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
-        print(now, adjusted_time, chance)
-    else:
-        msg = bot.send_message(chat_id=chat_id, text='Bad Input')
+        msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)))

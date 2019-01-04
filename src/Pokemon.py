@@ -1,10 +1,11 @@
 import json
 import logging
+import math
 import random
 import urllib.request
 from io import BytesIO
+from typing import List
 
-import math
 import requests
 from PIL import Image
 
@@ -13,17 +14,17 @@ from EichState import EichState
 
 class Pokemon:
     def __init__(self, id, name, moves, health, level, types, sprites, height, weight, female, is_shiny):
-        self.id = id
-        self.name = name
-        self.level = level
-        self.moves = moves
-        self.health = health
-        self.types = types
-        self.sprites = sprites
-        self.weight = weight
-        self.height = height
-        self.female = female
-        self.is_shiny = is_shiny
+        self.id: int = id
+        self.name: str = name
+        self.level: int = level
+        self.moves: List[dict] = moves
+        self.health: float = health
+        self.types: List[dict] = types
+        self.sprites: dict = sprites
+        self.weight: int = weight
+        self.height: int = height
+        self.female: bool = female
+        self.is_shiny: bool = is_shiny
 
     def serialize_pokemon(self):
         serial = {
@@ -175,6 +176,18 @@ def build_pokemon_bag_image(pokemon_sprite_list):
         x_offset += images[0].size[0]
 
     return new_im
+
+
+def get_pokemon_portrait_image(pokemon_sprite):
+    image = get_poke_image(sprite=pokemon_sprite)
+    width, height = image.size
+    alpha = image.convert('RGBA').split()[-1]
+    background = Image.open('../res/img/background1.png')
+    w, h = background.size
+    background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
+    background.thumbnail((width, height), Image.ANTIALIAS)
+    background.paste(image, (0, 0), mask=alpha)
+    return background
 
 
 def build_item_bag_image(item_list):

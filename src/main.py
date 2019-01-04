@@ -11,10 +11,10 @@ from EichState import EichState
 #   duels
 #   inspect pokemon
 #   train pokemon
-#   Improve player updates (mongodb) - done
 #   config/game menu - wip
 #   Tests
 #   German
+#   use tempfile
 
 
 @MessageBuilder.send_typing_action
@@ -99,7 +99,7 @@ def main():
 
     updater.start_polling()
     j = updater.job_queue
-    autoup = j.run_repeating(command_handler_encounter, interval=60, first=0)
+    autoup = j.run_repeating(command_handler_encounter, interval=60*15, first=0)
 
 
 main()

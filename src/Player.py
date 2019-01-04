@@ -7,17 +7,17 @@ import Pokemon
 class Player:
     def __init__(self, chat_id, items=None, pokemon=None, last_encounter=None, in_encounter=None,
                  pokemon_direction=None, catch_message_id=None, catch_pokemon=None, encounters=False):
-        self.chat_id = chat_id
+        self.chat_id: int = chat_id
         self.items = {} if items is None else items
         self.pokemon: List[Pokemon.Pokemon] = [] if pokemon is None else pokemon
 
         # Encounter
-        self.last_encounter = time.time() if last_encounter is None else last_encounter
-        self.in_encounter = False if in_encounter is None else in_encounter
-        self.pokemon_direction = pokemon_direction
-        self.catch_message_id = catch_message_id
-        self.catch_pokemon = catch_pokemon
-        self.encounters = encounters
+        self.last_encounter: float = time.time() if last_encounter is None else last_encounter
+        self.in_encounter: bool = False if in_encounter is None else in_encounter
+        self.pokemon_direction: int = pokemon_direction
+        self.catch_message_id: int = catch_message_id
+        self.catch_pokemon: Pokemon = catch_pokemon
+        self.encounters: bool = encounters
 
     @classmethod
     def update_player(cls, player, chat_id=None, items=None, pokemon=None, last_encounter=None, in_encounter=None,
