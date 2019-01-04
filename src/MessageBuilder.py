@@ -26,7 +26,7 @@ def prepare_environment():
     parser.set_defaults(which='no_arguments')
     parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
-    if os.path.isfile('./conf.json'):
+    if os.path.isfile(os.path.dirname(os.path.abspath(__file__)) + '/conf.json'):
         with open('conf.json') as f:
             config = json.load(f)
     else:
@@ -39,7 +39,7 @@ def prepare_environment():
         EichState.DEBUG = True
         EichState.token = config['test_token']
 
-    if os.path.isfile('./name_dict.json'):
+    if os.path.isfile(os.path.dirname(os.path.abspath(__file__)) + '/name_dict.json'):
         with open('name_dict.json') as f:
             EichState.names_dict = json.load(f)
     else:
@@ -86,7 +86,11 @@ def get_poke_info(pokemon):
             logging.error('Type not found: ' + '\n' + poke_type)
             raise e
 
-    sprite = sprites[random.choice(list(sprites.keys()))]
+    if random.random() > 0.90:
+        sprite = poke_json['sprites']['front_shiny']
+    else:
+        sprite = poke_json['sprites']['front_default']
+
     dd_types_str = ', '.join(map(str, list(set(double_damage_types))))
     hd_types_str = ', '.join(map(str, list(set(half_damage_types))))
     nd_types_str = ', '.join(map(str, list(set(no_damage_types))))
@@ -107,11 +111,14 @@ def build_msg_info(bot, update):
     pokemon = pokemon.lower()
     try:
         text, sprite = get_poke_info(pokemon)
-        Pokemon.get_pokemon_portrait_image(sprite).save('/tmp/image_info_' + str(update.message.chat_id) + '.png')
+        dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/tmp/'
+
+        Pokemon.get_pokemon_portrait_image(sprite).save(dir + 'image_info_' + str(update.message.chat_id) + '.png')
         bot.send_photo(chat_id=update.message.chat_id,
-                       photo=open('/tmp/image_info_' + str(update.message.chat_id) + '.png', 'rb'),
+                       photo=open(dir + 'image_info_' + str(update.message.chat_id) + '.png', 'rb'),
                        caption=text,
                        parse_mode=ParseMode.MARKDOWN)
+        os.remove(dir + 'image_info_' + str(update.message.chat_id) + '.png')
     except urllib.request.HTTPError as e:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
     except ConnectionResetError as e:
@@ -126,7 +133,8 @@ def build_msg_start(bot, update):
                            ' People call me the Pokémon Prof!\n'
                            'I will give you some hints in battle, just type the name of your'
                            ' opponent\'s pokemon in english or german.\n'
-                           'Type /start to show this message.')
+                           'Type /start to show this message.\n'
+                           'Try the /help and /menu commands')
 
 
 def build_msg_restart(bot, update):
@@ -203,12 +211,14 @@ def build_msg_encounter(bot):
             reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
             sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
             sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
+            dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/tmp/'
             Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
                                             direction=pokemon_direction).save(
-                'catch_img_' + str(player.chat_id) + '.png')
+                dir + 'catch_img_' + str(player.chat_id) + '.png')
             msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
-                                 photo=open('catch_img_' + str(player.chat_id) + '.png', 'rb'),
+                                 photo=open(dir + 'catch_img_' + str(player.chat_id) + '.png', 'rb'),
                                  reply_markup=reply_markup)
+            os.remove(dir + 'catch_img_' + str(player.chat_id) + '.png')
             update = DBAccessor.get_update_query(last_encounter=now,
                                                  in_encounter=True,
                                                  pokemon_direction=pokemon_direction,
@@ -231,11 +241,13 @@ def build_msg_bag(bot, chat_id):
 
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
     if image is not None:
-        image.save('/tmp/image_bag_' + str(chat_id) + '.png')
+        dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/tmp/'
+        image.save(dir + 'image_bag_' + str(chat_id) + '.png')
 
         bot.send_photo(chat_id=chat_id,
-                       photo=open('/tmp/image_bag_' + str(chat_id) + '.png', 'rb'),
+                       photo=open(dir + 'image_bag_' + str(chat_id) + '.png', 'rb'),
                        caption=caption, parse_mode=ParseMode.MARKDOWN)
+        os.remove(dir + 'image_bag_' + str(chat_id) + '.png')
     else:
         bot.send_message(chat_id=chat_id,
                          text='Your bag is empty, catch some pokemon!')
