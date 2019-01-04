@@ -11,6 +11,7 @@ import urllib.request
 from functools import wraps
 
 import telegram
+from emoji import emojize
 from telegram import ChatAction, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 import DBAccessor
@@ -27,7 +28,7 @@ def prepare_environment():
     parser.add_argument('-d', '--debug', action='store_true', required=False, help='Debug mode')
 
     if os.path.isfile(os.path.dirname(os.path.abspath(__file__)) + '/conf.json'):
-        with open(os.path.dirname(os.path.abspath(__file__))+'/conf.json') as f:
+        with open(os.path.dirname(os.path.abspath(__file__)) + '/conf.json') as f:
             config = json.load(f)
     else:
         raise EnvironmentError("Config file not existent or wrong format")
@@ -129,12 +130,24 @@ def build_msg_start(bot, update):
     sprite = 'https://cdn.bulbagarden.net/upload/3/3e/Lets_Go_Pikachu_Eevee_Professor_Oak.png'
     bot.send_photo(chat_id=update.message.chat_id,
                    photo=sprite,
-                   caption='Hello there! Welcome to the world of Pokémon! My name is Oak!'
-                           ' People call me the Pokémon Prof!\n'
+                   caption='Hello there! Welcome to the world of Pok\xe9mon! My name is Oak!'
+                           ' People call me the Pok\xe9mon Prof!\n'
                            'I will give you some hints in battle, just type the name of your'
                            ' opponent\'s pokemon in english or german.\n'
                            'Type /start to show this message.\n'
                            'Try the /help and /menu commands')
+
+
+def build_msg_help(bot, chat_id):
+    bot.send_message(chat_id=chat_id, text='Available commands:\n'
+                                           '/start : Introduction\n'
+                                           '/help : This message\n'
+                                           '/menu : Shows menu\n'
+                                           '/catch & /nocatch : Toggles encounters\n'
+                                           '/bag : Shows pok\xe9mon pouch\n'
+                                           '/items : Shows item pouch\n'
+                                           '/trade : Shows trade menu\n'
+                                           '/chance : Shows encounter chance')
 
 
 def build_msg_restart(bot, update):
@@ -169,6 +182,10 @@ def build_msg_no_catch(bot, chat_id):
         bot.send_message(chat_id=chat_id, text='You\'re no longer on the list. Type /catch to get encounters.')
     else:
         raise ('Data Error: Corrupt Player')
+
+
+def build_msg_trade(bot, chat_id):
+    bot.send_message(chat_id=chat_id, text='Trading Pok\xe9mon is currently under development. Please try again later.')
 
 
 def build_msg_encounter(bot):
@@ -253,27 +270,31 @@ def build_msg_bag(bot, chat_id):
                          text='Your bag is empty, catch some pokemon!')
 
 
-def build_msg_item_bag(bot, update):
-    chat_id = update.message.chat_id
-    player = DBAccessor.get_player(chat_id)
-    bot.send_message(chat_id=chat_id, text=player.items.keys())
+def build_msg_item_bag(bot, chat_id):
+    bot.send_message(chat_id=chat_id, text='Items are currently under development. Please try again later.')
+    # bot.send_message(chat_id=chat_id, text=player.items.keys())
 
 
 def build_msg_menu(bot, update):
+    player = DBAccessor.get_player(update.message.chat_id)
+    if player.encounters:
+        catch_button_text = u'Encounters  ' + emojize(":white_check_mark:", use_aliases=True)  # \U00002713'
+    else:
+        catch_button_text = u'Encounters  ' + emojize(":x:", use_aliases=True)  # \U0000274C'
     keys = [[InlineKeyboardButton(text='Bag', callback_data='menu-bag'),
              InlineKeyboardButton(text='Trade', callback_data='menu-trade')],
-            [InlineKeyboardButton(text='Catch', callback_data='menu-catch'),
+            [InlineKeyboardButton(text=catch_button_text, callback_data='menu-catch'),
              InlineKeyboardButton(text='Items', callback_data='menu-items')]]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
-    msg = bot.send_message(chat_id=update.message.chat_id, text='catch Pokemon!',
+    msg = bot.send_message(chat_id=update.message.chat_id, text='Menu:',
                            reply_markup=reply_markup)
 
 
 def process_callback(bot, update):
     print('Callback!')
     data = update.callback_query.data
+    player = DBAccessor.get_player(update.effective_chat.id)
     if data.startswith('catch-'):
-        player = DBAccessor.get_player(update.effective_chat.id)
         option = int(data[6:])
         if option == player.pokemon_direction:
             bot.send_message(chat_id=player.chat_id, text='captured ' + player.catch_pokemon.name + '!')
@@ -291,12 +312,18 @@ def process_callback(bot, update):
             pass
         elif data == 'menu-escape':
             pass
-        elif data == 'menu-trade':
-            pass
-        elif data == 'menu-catch':
-            build_msg_catch(bot=bot, chat_id=update.effective_message.chat_id)
+
         elif data == 'menu-bag':
             build_msg_bag(bot, update.effective_message.chat_id)
+        elif data == 'menu-trade':
+            build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id)
+        elif data == 'menu-catch':
+            if player.encounters:
+                build_msg_no_catch(bot=bot, chat_id=update.effective_message.chat_id)
+            else:
+                build_msg_catch(bot=bot, chat_id=update.effective_message.chat_id)
+        elif data == 'menu-items':
+            build_msg_item_bag(bot=bot, chat_id=update.effective_message.chat_id)
     else:
         raise ValueError('Invalid callback data: ' + data)
 
@@ -328,4 +355,4 @@ def adjust_encounter_chance(bot, chat_id, chance):
         now = time.time()
         player = DBAccessor.get_player(chat_id)
         chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
-        msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)))
+        msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) + '%')

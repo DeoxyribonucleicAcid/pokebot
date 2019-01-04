@@ -28,7 +28,7 @@ def command_handler_encounter(bot, job):
 
 @MessageBuilder.send_typing_action
 def command_handler_item_bag(bot, update):
-    MessageBuilder.build_msg_item_bag(bot, update=update)
+    MessageBuilder.build_msg_item_bag(bot, chat_id=update.message.chat_id)
 
 
 @MessageBuilder.send_typing_action
@@ -41,8 +41,17 @@ def command_handler_start(bot, update):
     MessageBuilder.build_msg_start(bot=bot, update=update)
 
 
+@MessageBuilder.send_typing_action
+def command_handler_help(bot, update):
+    MessageBuilder.build_msg_help(bot=bot, chat_id=update.message.chat_id)
+
+
 def command_handler_catch(bot, update):
     MessageBuilder.build_msg_catch(bot=bot, chat_id=update.message.chat_id)
+
+
+def command_handler_trade(bot, update):
+    MessageBuilder.build_msg_trade(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_no_catch(bot, update):
@@ -78,7 +87,9 @@ def main():
     #
     poke_handler = MessageHandler(Filters.text, callback=command_handler_info)
     start_handler = CommandHandler('start', callback=command_handler_start)
+    help_handler = CommandHandler('help', callback=command_handler_help)
     catch_handler = CommandHandler('catch', callback=command_handler_catch)
+    trade_handler = CommandHandler('trade', callback=command_handler_trade)
     no_catch_handler = CommandHandler('nocatch', callback=command_handler_no_catch)
     bag_handler = CommandHandler('bag', callback=command_handler_bag)
     items_handler = CommandHandler('items', callback=command_handler_item_bag)
@@ -90,7 +101,9 @@ def main():
     #
     dispatcher.add_handler(poke_handler)
     dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(help_handler)
     dispatcher.add_handler(catch_handler)
+    dispatcher.add_handler(trade_handler)
     dispatcher.add_handler(no_catch_handler)
     dispatcher.add_handler(bag_handler)
     dispatcher.add_handler(items_handler)
@@ -99,7 +112,7 @@ def main():
 
     updater.start_polling()
     j = updater.job_queue
-    autoup = j.run_repeating(command_handler_encounter, interval=60*15, first=0)
+    autoup = j.run_repeating(command_handler_encounter, interval=60 * 15, first=0)
 
 
 main()
