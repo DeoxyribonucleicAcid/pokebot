@@ -79,7 +79,7 @@ def main():
     print('MAIN')
     MessageBuilder.prepare_environment()
 
-    updater = Updater(token=EichState.token)
+    updater = Updater(token=EichState.token, request_kwargs={'read_timeout': 6, 'connect_timeout': 7})
     dispatcher = updater.dispatcher
     # DEBUG
     restart_handler = CommandHandler('restart', callback=command_handler_restart)
