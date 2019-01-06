@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import os
 import random
 import urllib.request
 from io import BytesIO
@@ -115,7 +116,7 @@ def get_random_poke(poke_json, level_reference):
 
 
 def get_sprite_dir(poke_name):
-    return '../res/img/' + poke_name + '.png'
+    return os.path.dirname(os.path.abspath(__file__)) + '/res/img/' + poke_name + '.png'
 
 
 def get_poke_image(sprite):
@@ -133,7 +134,7 @@ def build_pokemon_catch_img(pokemon_sprite, direction):
     width_total = edge_length * width
     height_total = edge_length * height
     alpha = image.convert('RGBA').split()[-1]
-    background = Image.open('../res/img/background1.png')
+    background = Image.open(os.path.dirname(os.path.abspath(__file__)) + '/res/img/background1.png')
     w, h = background.size
     background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
     background.thumbnail((width_total, height_total), Image.ANTIALIAS)
@@ -182,7 +183,7 @@ def get_pokemon_portrait_image(pokemon_sprite):
     image = get_poke_image(sprite=pokemon_sprite)
     width, height = image.size
     alpha = image.convert('RGBA').split()[-1]
-    background = Image.open('../res/img/background1.png')
+    background = Image.open(os.path.dirname(os.path.abspath(__file__)) + '/res/img/background1.png')
     w, h = background.size
     background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
     background.thumbnail((width, height), Image.ANTIALIAS)

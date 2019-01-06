@@ -8,6 +8,8 @@ def install(package):
     subprocess.call([sys.executable, "-m", "pip", "install", package])
 
 
+subprocess.call(['virtualenv', 'venv'])
+subprocess.call(['source', 'venv/bin/activate'])
 # Example
 if __name__ == '__main__':
     install('python-telegram-bot')
