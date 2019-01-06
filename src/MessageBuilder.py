@@ -214,7 +214,7 @@ def build_msg_encounter(bot):
                                                      catch_message_id=None,
                                                      catch_pokemon=None)
                 DBAccessor.update_player(_id=player.chat_id, update=update)
-                print('reset encounter for player ' + str(player.chat_id))
+                logging.info('reset encounter for player ' + str(player.chat_id))
             continue
         chance = pow(1 / (24 * 60 * 60) * (now - last_enc), math.e)
         if 0 < draw < chance:
@@ -298,7 +298,6 @@ def build_msg_menu(bot, update):
 
 
 def process_callback(bot, update):
-    print('Callback!')
     data = update.callback_query.data
     player = DBAccessor.get_player(update.effective_chat.id)
     if data.startswith('catch-'):
@@ -355,7 +354,6 @@ def adjust_encounter_chance(bot, chat_id, chance):
             chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
             msg = bot.send_message(chat_id=chat_id,
                                    text='Updated chance to encounter to ' + str(int(chance * 100)) + '%')
-            print(now, adjusted_time, chance)
         else:
             msg = bot.send_message(chat_id=chat_id, text='Bad Input')
     else:

@@ -32,7 +32,6 @@ def get_encounter_players_cursor():
     result = []
     for player in cursor:
         result.append(Player.deserialize_player(player))
-    print('Found ' + str(cursor.count()) + ' active players')
     return result
 
 

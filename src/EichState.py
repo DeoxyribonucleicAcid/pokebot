@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import urllib.request
 
@@ -17,17 +18,16 @@ def db_setup():
     client = pymongo.MongoClient(config["mongo_db_srv"])
     test = client.test
     db = client["database"]
-    print(client.list_database_names())
 
     player_collection = db["player"]
     #player_collection.insert_one({"_id": 00000000})
 
     if "database" in client.list_database_names():
-        print("The database exists.")
+        logging.info("The database exists.")
     else:
         raise EnvironmentError('Database does not exist!')
     if "player" in db.list_collection_names():
-        print("The collection exists.")
+        logging.info("The collection exists.")
     else:
         raise EnvironmentError('Collection does not exist!')
     return db, player_collection
