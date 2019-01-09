@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger(__name__)
+
+
 class Item:
     def __init__(self, item_id, name, attributes):
         self.id = item_id

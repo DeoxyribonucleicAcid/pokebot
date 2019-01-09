@@ -1,7 +1,10 @@
+import logging
+
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 
-import MessageBuilder
-from EichState import EichState
+import src.MessageBuilder as MessageBuilder
+import src.setup as setup
+from src.EichState import EichState
 
 
 # TODO-List:
@@ -59,7 +62,7 @@ def command_handler_no_catch(bot, update):
 
 
 def command_handler_menu(bot, update):
-    MessageBuilder.build_msg_menu(bot=bot, update=update)
+    MessageBuilder.send_menu_message(bot=bot, update=update)
 
 
 def callback_handler(bot, update):
@@ -76,7 +79,8 @@ def command_handler_chance(bot, update, args):
 
 
 def main():
-    MessageBuilder.prepare_environment()
+    logging.basicConfig(filename='.log', level=logging.DEBUG, filemode='w')
+    setup.prepare_environment()
 
     updater = Updater(token=EichState.token, request_kwargs={'read_timeout': 6, 'connect_timeout': 7})
     dispatcher = updater.dispatcher

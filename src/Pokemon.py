@@ -10,7 +10,9 @@ from typing import List
 import requests
 from PIL import Image
 
-from EichState import EichState
+from src.EichState import EichState
+
+logger = logging.getLogger(__name__)
 
 
 class Pokemon:
