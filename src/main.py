@@ -4,6 +4,8 @@ from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, Callb
 
 import src.MessageBuilder as MessageBuilder
 import src.setup as setup
+from MessageBuilders import ToggleCatchMessageBuilder, EncounterMessageBuilder, BagMessageBuilder, \
+    ItemBagMessageBuilder, PokeInfoMessageBuilder, TradeMessageBuilder, MenuMessageBuilder, ReplyCallbackHandler
 from src.EichState import EichState
 
 
@@ -22,21 +24,21 @@ from src.EichState import EichState
 
 @MessageBuilder.send_typing_action
 def command_handler_bag(bot, update):
-    MessageBuilder.build_msg_bag(bot, update.message.chat_id)
+    BagMessageBuilder.build_msg_bag(bot, update.message.chat_id)
 
 
 def command_handler_encounter(bot, job):
-    MessageBuilder.build_msg_encounter(bot)
+    EncounterMessageBuilder.build_encounter_message(bot)
 
 
 @MessageBuilder.send_typing_action
 def command_handler_item_bag(bot, update):
-    MessageBuilder.build_msg_item_bag(bot, chat_id=update.message.chat_id)
+    ItemBagMessageBuilder.build_msg_item_bag(bot, chat_id=update.message.chat_id)
 
 
 @MessageBuilder.send_typing_action
 def command_handler_info(bot, update):
-    MessageBuilder.build_msg_info(bot=bot, update=update)
+    PokeInfoMessageBuilder.build_msg_info(bot=bot, update=update)
 
 
 @MessageBuilder.send_typing_action
@@ -50,23 +52,23 @@ def command_handler_help(bot, update):
 
 
 def command_handler_catch(bot, update):
-    MessageBuilder.build_msg_catch(bot=bot, chat_id=update.message.chat_id)
+    ToggleCatchMessageBuilder.build_catch_message(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_trade(bot, update):
-    MessageBuilder.build_msg_trade(bot=bot, chat_id=update.message.chat_id)
+    TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_no_catch(bot, update):
-    MessageBuilder.build_msg_no_catch(bot=bot, chat_id=update.message.chat_id)
+    ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_menu(bot, update):
-    MessageBuilder.send_menu_message(bot=bot, update=update)
+    MenuMessageBuilder.send_menu_message(bot=bot, update=update)
 
 
 def callback_handler(bot, update):
-    MessageBuilder.process_callback(bot=bot, update=update)
+    ReplyCallbackHandler.process_callback(bot=bot, update=update)
 
 
 # DEBUG
