@@ -1,7 +1,10 @@
 import logging
 from typing import List
 
-from src import Player, Message, Pokemon, EichState
+import Message
+import Player
+import Pokemon
+import src.EichState as EichState
 
 logger = logging.getLogger(__name__)
 
