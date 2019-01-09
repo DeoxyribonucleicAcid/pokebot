@@ -2,8 +2,8 @@ import logging
 import time
 from typing import List
 
-import src.Message as Message
-import src.Pokemon as Pokemon
+import Message as Message
+import Pokemon as Pokemon
 
 logger = logging.getLogger(__name__)
 

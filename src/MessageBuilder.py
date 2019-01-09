@@ -7,7 +7,7 @@ from functools import wraps
 
 from telegram import ChatAction
 
-import src.DBAccessor as DBAccessor
+import DBAccessor as DBAccessor
 from src.EichState import EichState
 
 logger = logging.getLogger(__name__)

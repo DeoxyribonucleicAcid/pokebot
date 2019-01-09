@@ -2,8 +2,8 @@ import logging
 
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler
 
-import src.MessageBuilder as MessageBuilder
-import src.setup as setup
+import MessageBuilder as MessageBuilder
+import setup as setup
 from MessageBuilders import ToggleCatchMessageBuilder, EncounterMessageBuilder, BagMessageBuilder, \
     ItemBagMessageBuilder, PokeInfoMessageBuilder, TradeMessageBuilder, MenuMessageBuilder, ReplyCallbackHandler
 from src.EichState import EichState
