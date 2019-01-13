@@ -32,7 +32,6 @@ def build_encounter_message(bot):
                 update = DBAccessor.get_update_query(last_encounter=now,
                                                      in_encounter=False,
                                                      pokemon_direction=None,
-                                                     catch_message_id=None,
                                                      catch_pokemon=None)
                 DBAccessor.update_player(_id=player.chat_id, update=update)
                 logging.info('reset encounter for player ' + str(player.chat_id))
@@ -74,14 +73,12 @@ def build_encounter_message(bot):
                 update = DBAccessor.get_update_query(last_encounter=now,
                                                      in_encounter=True,
                                                      pokemon_direction=pokemon_direction,
-                                                     catch_message_id=msg.message_id,
                                                      catch_pokemon=pokemon,
                                                      messages_to_delete=player.messages_to_delete)
             except telegram.error.Unauthorized as e:
                 update = DBAccessor.get_update_query(last_encounter=now,
                                                      in_encounter=False,
                                                      pokemon_direction=None,
-                                                     catch_message_id=None,
                                                      catch_pokemon=None,
                                                      encounters=False)
                 logging.error(e)

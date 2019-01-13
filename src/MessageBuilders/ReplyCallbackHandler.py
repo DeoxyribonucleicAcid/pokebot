@@ -5,7 +5,7 @@ import telegram
 import Constants
 import DBAccessor
 from MessageBuilders import BagMessageBuilder, TradeMessageBuilder, ToggleCatchMessageBuilder, ItemBagMessageBuilder, \
-    MenuMessageBuilder, MessageHelper
+    MenuMessageBuilder, MessageHelper, FriendlistMessageBuilder
 
 
 def process_callback(bot, update):
@@ -23,7 +23,7 @@ def process_callback(bot, update):
             # Reset Player's encounter
             player.pokemon.append(player.catch_pokemon)
             update = DBAccessor.get_update_query(pokemon=player.pokemon, in_encounter=False, pokemon_direction=None,
-                                                 catch_message_id=None, catch_pokemon=None)
+                                                 catch_pokemon=None)
             DBAccessor.update_player(_id=player.chat_id, update=update)
     elif data.startswith('catchmenu-'):
         if data == 'menu-item':
@@ -42,9 +42,11 @@ def process_callback(bot, update):
                 ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=update.effective_message.chat_id)
             else:
                 ToggleCatchMessageBuilder.build_catch_message(bot=bot, chat_id=update.effective_message.chat_id)
-            MenuMessageBuilder.update_menu_message(bot, update.effective_message.chat_id, update.effective_message.message_id)
+            MenuMessageBuilder.update_menu_message(bot, update.effective_message.chat_id,
+                                                   update.effective_message.message_id)
         elif data == 'menu-items':
             ItemBagMessageBuilder.build_msg_item_bag(bot=bot, chat_id=update.effective_message.chat_id)
+    elif data.startswith('friend-'):
+        FriendlistMessageBuilder.friend_callback_handler(bot=bot, update=update)
     else:
         raise ValueError('Invalid callback data: ' + data)
-

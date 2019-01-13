@@ -7,20 +7,26 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import Constants
 import DBAccessor
 import Message
+import Player
 from MessageBuilders import MessageHelper
 
 
 def send_menu_message(bot, update):
     player = DBAccessor.get_player(update.message.chat_id)
-    if player is None:
-        return
-    MessageHelper.delete_messages_by_type(bot=bot, player=player, type=Constants.MENU_MSG)
-    text, reply_markup = build_msg_menu(player)
+    if player is not None:
+        MessageHelper.delete_messages_by_type(bot=bot, player=player, type=Constants.MENU_MSG)
+    text, reply_markup = build_msg_menu(player.encounters if player is not None else False)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
-    player.messages_to_delete.append(Message.Message(msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time()))
-    query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
-    DBAccessor.update_player(_id=player.chat_id, update=query)
+    if player is None:
+        new_player = Player.Player(update.message.chat_id, messages_to_delete=[
+            Message.Message(_id=msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time())], encounters=False)
+        DBAccessor.insert_new_player(new_player)
+    else:
+        player.messages_to_delete.append(
+            Message.Message(msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time()))
+        query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+        DBAccessor.update_player(_id=player.chat_id, update=query)
 
 
 def update_menu_message(bot, chat_id, msg_id):
@@ -30,7 +36,7 @@ def update_menu_message(bot, chat_id, msg_id):
     # msg_id = len(player.messages_to_delete) - 1 - next(
     #     (i for i, x in enumerate(reversed(player.messages_to_delete)) if x._title == Constants.MENU_MSG),
     #     len(player.messages_to_delete))
-    text, reply_markup = build_msg_menu(player=player)
+    text, reply_markup = build_msg_menu(encounters=player.encounters)
     try:
         bot.edit_message_text(chat_id=chat_id, text=text, message_id=msg_id,
                               reply_markup=reply_markup)
@@ -39,10 +45,8 @@ def update_menu_message(bot, chat_id, msg_id):
             raise e
 
 
-def build_msg_menu(player):
-    if player is None:
-        return
-    if player.encounters:
+def build_msg_menu(encounters: bool):
+    if encounters:
         catch_button_text = u'Encounters  ' + emojize(":white_check_mark:", use_aliases=True)  # \U00002713'
     else:
         catch_button_text = u'Encounters  ' + emojize(":x:", use_aliases=True)  # \U0000274C'
@@ -53,4 +57,3 @@ def build_msg_menu(player):
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup
-
