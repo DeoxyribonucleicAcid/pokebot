@@ -100,6 +100,7 @@ def search_friend_in_players(bot, update):
     player = DBAccessor.get_player(update.message.chat_id)
     if username.startswith('@'):
         username = username[1:]
+    username = username.lower()
     new_friend = DBAccessor.get_player_by_name(username=username)
     if new_friend is None:
         bot.send_message(chat_id=player.chat_id,
@@ -117,6 +118,7 @@ def search_friend_in_players(bot, update):
         query = DBAccessor.get_update_query(friendlist=player.friendlist,
                                             nc_msg_state=Constants.NC_MSG_States.INFO)
         DBAccessor.update_player(_id=update.message.chat_id, update=query)
+        bot.send_message(chat_id=player.chat_id, text='I added and notified him/her.')
         if player.chat_id not in new_friend.friendlist:
             keys = [[InlineKeyboardButton(text='Yes, sure',
                                           callback_data='friend-add-notify-yes-' + player.username),

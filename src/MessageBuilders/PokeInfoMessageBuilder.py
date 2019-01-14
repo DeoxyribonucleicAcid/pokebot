@@ -1,8 +1,8 @@
 import json
 import logging
-import os
 import random
 import urllib.request
+from io import BytesIO
 
 from telegram import ParseMode
 
@@ -62,15 +62,16 @@ def build_msg_info(bot, update):
     pokemon = pokemon.lower()
     try:
         text, sprite = get_poke_info(pokemon)
-        directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/res/tmp/'
-        filename = directory + 'image_info_' + str(update.message.chat_id) + '.png'
+        bio = BytesIO()
+        bio.name = 'image_info_' + str(update.message.chat_id) + '.png'
+        image = Pokemon.get_pokemon_portrait_image(sprite)
+        image.save(bio,'PNG')
+        bio.seek(0)
 
-        Pokemon.get_pokemon_portrait_image(sprite).save(filename, 'PNG')
         bot.send_photo(chat_id=update.message.chat_id,
-                       photo=open(filename, 'rb'),
+                       photo=bio,
                        caption=text,
                        parse_mode=ParseMode.MARKDOWN)
-        os.remove(filename)
     except urllib.request.HTTPError as e:
         bot.send_message(chat_id=update.message.chat_id, text=':( i didn\'t catch that')
     except ConnectionResetError as e:

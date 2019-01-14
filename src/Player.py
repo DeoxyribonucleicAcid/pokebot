@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class Player:
-    def __init__(self, chat_id, username=None, friendlist=None, items=None, pokemon=None, last_encounter=None,
+    def __init__(self, chat_id, username: str = None, friendlist=None, items=None, pokemon=None, last_encounter=None,
                  in_encounter=None,
                  pokemon_direction=None, nc_msg_state=None, catch_pokemon=None, encounters=False,
                  messages_to_delete=None):
         self.chat_id: int = chat_id
-        self.username = username
+        self.username = None if username is None else username.lower()
         self.friendlist: List[int] = [] if friendlist is None else friendlist
         self.items = {} if items is None else items
         self.pokemon: List[Pokemon.Pokemon] = [] if pokemon is None else pokemon
@@ -60,50 +60,65 @@ def deserialize_player(json):
         chat_id = json['_id']
     except KeyError as e:
         chat_id = None
+        logging.error(e)
+        logging.error(e)
     try:
         username = json['username']
     except KeyError as e:
         username = None
+        logging.error(e)
     try:
         friendlist = [i for i in json['friendlist']]
     except KeyError as e:
         friendlist = None
+        logging.error(e)
     try:
         items = json['items']
     except KeyError as e:
         items = None
+        logging.error(e)
     try:
         pokemon = [Pokemon.deserialize_pokemon(i) for i in json['pokemon']]
     except KeyError as e:
         pokemon = None
+        logging.error(e)
     try:
         last_encounter = json['last_encounter']
     except KeyError as e:
         last_encounter = None
+        logging.error(e)
     try:
         in_encounter = json['in_encounter']
     except KeyError as e:
         in_encounter = None
+        logging.error(e)
     try:
         pokemon_direction = json['pokemon_direction']
     except KeyError as e:
         pokemon_direction = None
+        logging.error(e)
     try:
         nc_msg_state = json['nc_msg_state']
     except KeyError as e:
         nc_msg_state = None
+        logging.error(e)
     try:
-        catch_pokemon = Pokemon.deserialize_pokemon(json['catch_pokemon']) if json['catch_pokemon'] is not None else None
+        catch_pokemon = Pokemon.deserialize_pokemon(
+            json['catch_pokemon']
+        ) if json['catch_pokemon'] is not None else None
     except KeyError as e:
         catch_pokemon = None
+        logging.error(e)
     try:
         encounters = json['encounters']
     except KeyError as e:
         encounters = None
+        logging.error(e)
     try:
         messages_to_delete = [Message.deserialize_msg(i) for i in json['messages_to_delete']]
     except KeyError as e:
         messages_to_delete = None
+        logging.error(e)
 
     player = Player(chat_id=chat_id,
                     username=username,

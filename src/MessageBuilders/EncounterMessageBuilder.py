@@ -1,8 +1,8 @@
 import logging
 import math
-import os
 import random
 import time
+from io import BytesIO
 
 import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -54,10 +54,11 @@ def build_encounter_message(bot):
             reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
             sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
             sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
-            directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/res/tmp/'
-            filename = directory + 'catch_img_' + str(player.chat_id) + '.png'
-            Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite,
-                                            direction=pokemon_direction).save(filename, 'PNG')
+            image = Pokemon.build_pokemon_catch_img(pokemon_sprite=sprite, direction=pokemon_direction)
+            bio = BytesIO()
+            bio.name = 'catch_img_' + str(player.chat_id) + '.png'
+            image.save(bio, 'PNG')
+            bio.seek(0)
             try:
                 for i in player.get_messages(Constants.ENCOUNTER_MSG):
                     try:
@@ -65,7 +66,7 @@ def build_encounter_message(bot):
                     except telegram.error.BadRequest as e:
                         logging.error(e)
                 msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
-                                     photo=open(filename, 'rb'),
+                                     photo=bio,
                                      reply_markup=reply_markup)
                 player.messages_to_delete.append(Message.Message(_id=msg.message_id,
                                                                  _title=Constants.ENCOUNTER_MSG,
@@ -82,5 +83,4 @@ def build_encounter_message(bot):
                                                      catch_pokemon=None,
                                                      encounters=False)
                 logging.error(e)
-            os.remove(filename)
             DBAccessor.update_player(_id=player.chat_id, update=update)

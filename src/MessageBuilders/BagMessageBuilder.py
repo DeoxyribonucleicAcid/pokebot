@@ -1,6 +1,6 @@
 import logging
-import os
 import time
+from io import BytesIO
 
 import telegram
 from telegram import ParseMode
@@ -32,14 +32,13 @@ def build_msg_bag(bot, chat_id):
 
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
     if image is not None:
-        directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + '/res/tmp/'
-        filename = directory + 'image_bag_' + str(chat_id) + '.png'
-        image.save(filename, 'PNG')
-
+        bio = BytesIO()
+        bio.name= 'image_bag_' + str(chat_id) + '.png'
+        image.save(bio, 'PNG')
+        bio.seek(0)
         msg = bot.send_photo(chat_id=chat_id,
-                             photo=open(filename, 'rb'),
+                             photo=bio,
                              caption=caption, parse_mode=ParseMode.MARKDOWN)
-        os.remove(filename)
     else:
         msg = bot.send_message(chat_id=chat_id,
                                text='Your bag is empty, catch some pokemon!')
