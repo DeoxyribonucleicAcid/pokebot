@@ -77,7 +77,7 @@ def command_handler_update_username(bot, update):
 
 
 def command_handler_firendlist(bot, update):
-    FriendlistMessageBuilder.build_friendlist_message(bot=bot, update=update)
+    FriendlistMessageBuilder.build_friendlist_message(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_add_friend(bot, update):

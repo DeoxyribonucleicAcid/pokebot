@@ -53,7 +53,8 @@ def build_msg_menu(encounters: bool):
     keys = [[InlineKeyboardButton(text='Bag', callback_data='menu-bag'),
              InlineKeyboardButton(text='Trade', callback_data='menu-trade')],
             [InlineKeyboardButton(text=catch_button_text, callback_data='menu-catch'),
-             InlineKeyboardButton(text='Items', callback_data='menu-items')]]
+             InlineKeyboardButton(text='Items', callback_data='menu-items')],
+            [InlineKeyboardButton(text='Friend List', callback_data='menu-friendlist')]]
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup

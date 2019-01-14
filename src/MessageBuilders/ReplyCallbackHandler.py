@@ -46,6 +46,8 @@ def process_callback(bot, update):
                                                    update.effective_message.message_id)
         elif data == 'menu-items':
             ItemBagMessageBuilder.build_msg_item_bag(bot=bot, chat_id=update.effective_message.chat_id)
+        elif data == 'menu-friendlist':
+            FriendlistMessageBuilder.build_friendlist_message(bot=bot, chat_id=update.effective_message.chat_id)
     elif data.startswith('friend-'):
         FriendlistMessageBuilder.friend_callback_handler(bot=bot, update=update)
     else:
