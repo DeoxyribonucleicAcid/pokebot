@@ -20,10 +20,10 @@ def build_friendlist_message(bot, chat_id):
     elif player.friendlist is None or len(player.friendlist) is 0:
         keys = [[InlineKeyboardButton(text='Add friend',
                                       callback_data='friend-add')]]
-        replyKeyboard = InlineKeyboardMarkup(inline_keyboard=keys)
+        reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
         bot.send_message(chat_id=chat_id,
                          text='You got no friends :( Add some with their usernames using /addfriend.',
-                         reply_markup=replyKeyboard)
+                         reply_markup=reply_keyboard)
         return
     for i in player.get_messages(Constants.FRIENDLIST_MSG):
         try:
@@ -47,8 +47,8 @@ def build_friendlist_message(bot, chat_id):
                                               callback_data='friend-delete-' + str(friend_id))], )
     keys.append([InlineKeyboardButton(text='Add friend',
                                       callback_data='friend-add')])
-    replyKeyboard = InlineKeyboardMarkup(inline_keyboard=keys)
-    msg = bot.send_message(chat_id=player.chat_id, text='Your friends:', reply_markup=replyKeyboard)
+    reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
+    msg = bot.send_message(chat_id=player.chat_id, text='Your friends:', reply_markup=reply_keyboard)
 
     player.messages_to_delete.append(
         Message.Message(msg.message_id, _title=Constants.FRIENDLIST_MSG, _time_sent=time.time()))
@@ -63,9 +63,9 @@ def delete_friend(bot, chat_id, friend_to_be_deleted):
         [InlineKeyboardButton(text='No, just joking',
                               callback_data='friend-confirm-delete-no')]
     ]
-    replyKeyboard = InlineKeyboardMarkup(inline_keyboard=keys)
+    reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
     msg = bot.send_message(chat_id=chat_id, text='You dont really want to loose a friend? o.o',
-                           reply_markup=replyKeyboard)
+                           reply_markup=reply_keyboard)
     player = DBAccessor.get_player(chat_id)
     player.messages_to_delete.append(
         Message.Message(msg.message_id, _title=Constants.FRIEND_CONFIRM_DELETE_MSG, _time_sent=time.time()))
@@ -92,9 +92,9 @@ def delete_friend_confirm(bot, chat_id, friend_to_be_deleted):
 def friend_callback_handler(bot, update):
     data = update.callback_query.data
     if data.startswith('friend-name-'):
-        friend_id = data[12:]
+        friend_id = int(data[12:])
     elif data.startswith('friend-trade-'):
-        friend_id = data[13:]
+        friend_id = int(data[13:])
         player = DBAccessor.get_player(update.effective_message.chat_id)
         for i in player.get_messages(Constants.TRADE_FRIENDLIST_MSG):
             try:
@@ -103,13 +103,13 @@ def friend_callback_handler(bot, update):
                 logging.error(e)
         TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id, player_id=friend_id)
     elif data.startswith('friend-duel-'):
-        friend_id = data[12:]
+        friend_id = int(data[12:])
         pass
     elif data.startswith('friend-delete-'):
-        friend_id = data[14:]
+        friend_id = int(data[14:])
         delete_friend(bot=bot, chat_id=update.effective_message.chat_id, friend_to_be_deleted=friend_id)
     elif data.startswith('friend-confirm-delete-yes-'):
-        friend_id = data[26:]
+        friend_id = int(data[26:])
         delete_friend_confirm(bot=bot, chat_id=update.effective_message.chat_id, friend_to_be_deleted=friend_id)
     elif data == 'friend-confirm-delete-no':
         player = DBAccessor.get_player(update.effective_message.chat_id)
@@ -169,10 +169,10 @@ def search_friend_in_players(bot, update):
                                           callback_data='friend-add-notify-yes-' + player.username),
                      InlineKeyboardButton(text='No, I don\'t know him/her',
                                           callback_data='friend-add-notify-no')]]
-            replyKeyboard = InlineKeyboardMarkup(inline_keyboard=keys)
+            reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
             bot.send_message(chat_id=new_friend.chat_id,
                              text=player.username + ' just added you to his/her friendlist, do you want to add him/her too?',
-                             reply_markup=replyKeyboard)
+                             reply_markup=reply_keyboard)
         else:
             bot.send_message(chat_id=new_friend.chat_id,
                              text=player.username + ' just added you to his/her friendlist, nice, isn\'t it?')

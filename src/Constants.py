@@ -11,6 +11,7 @@ TRADE_FRIENDLIST_MSG = 'trade_firendlist_msg'
 TRADE_CHOOSE_MSG = 'trade_choose_msg'
 TRADE_CONFIRM_MSG = 'trade_confirm_msg'
 TRADE_INVITE_MSG = 'trade_confirm_msg'
+POKE_DISPLAY_MSG = 'poke_display_msg'
 
 
 class NC_MSG_States(Enum):

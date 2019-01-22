@@ -11,7 +11,7 @@ import Message
 import Pokemon
 
 
-def build_msg_bag(bot, chat_id, page_number: int):
+def build_msg_bag(bot, chat_id, page_number: int, trade_mode: bool):
     pokecount = 8
     player = DBAccessor.get_player(chat_id)
     if player is None:
@@ -23,7 +23,8 @@ def build_msg_bag(bot, chat_id, page_number: int):
     caption = ''
     if len(player.pokemon) > pokecount:
         caption = '*Page Number: *' + str(page_number) + '  Pok\xe9 ' + str(
-            page_number * pokecount) + '-' + str((page_number + 1) * pokecount) + '/' + str(len(player.pokemon)) + '\n'
+            (page_number * pokecount)+1) + '-' + (str((page_number + 1) * pokecount) if (page_number + 1) * pokecount <= len(
+            player.pokemon) else str(len(player.pokemon))) + '/' + str(len(player.pokemon)) + '\n'
     list_start = pokecount * page_number
     list_end = pokecount * (page_number + 1) if len(player.pokemon) >= pokecount * (page_number + 1) else len(
         player.pokemon)
@@ -34,11 +35,12 @@ def build_msg_bag(bot, chat_id, page_number: int):
         # caption += '#' + str(pokemon.pokedex_id) + ' ' + str(pokemon.name) + ' ' + str(int(pokemon.level)) + '\n'
         # pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
         keys.append([InlineKeyboardButton(text=pokemon.name,
-                                          callback_data='pokemon-display-' + str(pokemon._id))])
+                                          callback_data='pokemon-display-' + str(int(trade_mode)) + '-' + str(
+                                              page_number) + '-' + str(pokemon._id))])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
 
-    for i in player.get_messages(Constants.BAG_MSG):
+    for i in player.get_messages(Constants.BAG_MSG) + player.get_messages(Constants.POKE_DISPLAY_MSG):
         try:
             bot.delete_message(chat_id=player.chat_id, message_id=i._id)
         except telegram.error.BadRequest as e:
@@ -52,10 +54,12 @@ def build_msg_bag(bot, chat_id, page_number: int):
         keys.append([])
         if page_number > 0:
             keys[-1].append(InlineKeyboardButton(text='\u2190',
-                                                 callback_data='bag-page-' + str(page_number - 1)))
+                                                 callback_data='bag-page-' + str(int(trade_mode)) + '-' + str(
+                                                     page_number - 1)))
         if len(player.pokemon) > list_end:
             keys[-1].append(InlineKeyboardButton(text='\u2192',
-                                                 callback_data='bag-page-' + str(page_number + 1)))
+                                                 callback_data='bag-page-' + str(int(trade_mode)) + '-' + str(
+                                                     page_number + 1)))
 
         reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
 
