@@ -8,6 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import Constants
 import DBAccessor
 import Message
+from MessageBuilders import TradeMessageBuilder
 
 
 def build_friendlist_message(bot, chat_id):
@@ -17,8 +18,12 @@ def build_friendlist_message(bot, chat_id):
                          text='You are not registered.\nType /username or /register to register.')
         return
     elif player.friendlist is None or len(player.friendlist) is 0:
+        keys = [[InlineKeyboardButton(text='Add friend',
+                                      callback_data='friend-add')]]
+        replyKeyboard = InlineKeyboardMarkup(inline_keyboard=keys)
         bot.send_message(chat_id=chat_id,
-                         text='You got no friends :( Add some with their usernames using /addfriend.')
+                         text='You got no friends :( Add some with their usernames using /addfriend.',
+                         reply_markup=replyKeyboard)
         return
     for i in player.get_messages(Constants.FRIENDLIST_MSG):
         try:
@@ -35,9 +40,9 @@ def build_friendlist_message(bot, chat_id):
             keys.append([InlineKeyboardButton(text=DBAccessor.get_player(friend_id).username,
                                               callback_data='friend-name'),
                          InlineKeyboardButton(text='Trade',
-                                              callback_data='friend-trade'),
+                                              callback_data='friend-trade-' + str(friend_id)),
                          InlineKeyboardButton(text='Duel',
-                                              callback_data='friend-duel'),
+                                              callback_data='friend-duel-' + str(friend_id)),
                          InlineKeyboardButton(text=x_mark,
                                               callback_data='friend-delete-' + str(friend_id))], )
     keys.append([InlineKeyboardButton(text='Add friend',
@@ -86,11 +91,19 @@ def delete_friend_confirm(bot, chat_id, friend_to_be_deleted):
 
 def friend_callback_handler(bot, update):
     data = update.callback_query.data
-    if data == 'friend-name':
-        pass
-    elif data == 'friend-trade':
-        pass
-    elif data == 'friend-duel':
+    if data.startswith('friend-name-'):
+        friend_id = data[12:]
+    elif data.startswith('friend-trade-'):
+        friend_id = data[13:]
+        player = DBAccessor.get_player(update.effective_message.chat_id)
+        for i in player.get_messages(Constants.TRADE_FRIENDLIST_MSG):
+            try:
+                bot.delete_message(chat_id=player.chat_id, message_id=i._id)
+            except telegram.error.BadRequest as e:
+                logging.error(e)
+        TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id, player_id=friend_id)
+    elif data.startswith('friend-duel-'):
+        friend_id = data[12:]
         pass
     elif data.startswith('friend-delete-'):
         friend_id = data[14:]

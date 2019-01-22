@@ -16,14 +16,17 @@ logger = logging.getLogger(__name__)
 
 
 class Pokemon:
-    def __init__(self, id, name, moves, health, level, types, sprites, height, weight, female, is_shiny):
-        self.id: int = id
+    def __init__(self, pokedex_id=None, name=None, moves=None, health=None, level=None, types=None, sprites=None,
+                 height=None, weight=None, female=None, is_shiny=None, _id=None, max_health=None):
+        self._id = id(self) if _id is None else _id
+        self.pokedex_id: int = pokedex_id
         self.name: str = name
         self.level: int = level
-        self.moves: List[dict] = moves
-        self.health: float = health
-        self.types: List[dict] = types
-        self.sprites: dict = sprites
+        self.moves: List[dict] = moves if moves is not None else []
+        self.health: float = health if health is not None else 0
+        self.max_health: float = max_health if max_health is not None else 0
+        self.types: List[dict] = types if types is not None else []
+        self.sprites: dict = sprites if sprites is not None else {'front': None, 'back': None}
         self.weight: int = weight
         self.height: int = height
         self.female: bool = female
@@ -31,11 +34,13 @@ class Pokemon:
 
     def serialize_pokemon(self):
         serial = {
-            'id': self.id,
+            '_id': self._id,
+            'pokedex_id': self.pokedex_id,
             'name': self.name,
             'level': self.level,
             'moves': self.moves,
             'health': self.health,
+            'max_health': self.max_health,
             'types': self.types,
             'sprites': self.sprites,
             'weight': self.weight,
@@ -47,17 +52,87 @@ class Pokemon:
 
 
 def deserialize_pokemon(json):
-    pokemon = Pokemon(id=json['id'],
-                      name=json['name'],
-                      level=json['level'],
-                      moves=json['moves'],
-                      health=json['health'],
-                      types=json['types'],
-                      sprites=json['sprites'],
-                      weight=json['weight'],
-                      height=json['height'],
-                      female=json['female'],
-                      is_shiny=json['is_shiny'])
+    try:
+        _id = json['_id']
+    except KeyError as e:
+        _id = None
+        logging.error(e)
+    try:
+        pokedex_id = json['pokedex_id']
+    except KeyError as e:
+        try:
+            pokedex_id = json['id']
+        except KeyError as f:
+            pokedex_id = None
+            logging.error(e, f)
+    try:
+        name = json['name']
+    except KeyError as e:
+        name = None
+        logging.error(e)
+    try:
+        level = json['level']
+    except KeyError as e:
+        level = None
+        logging.error(e)
+    try:
+        moves = json['moves']
+    except KeyError as e:
+        moves = None
+        logging.error(e)
+    try:
+        health = json['health']
+    except KeyError as e:
+        health = None
+        logging.error(e)
+    try:
+        max_health = json['max_health']
+    except KeyError as e:
+        max_health = None
+        logging.error(e)
+    try:
+        types = json['types']
+    except KeyError as e:
+        types = None
+        logging.error(e)
+    try:
+        sprites = json['sprites']
+    except KeyError as e:
+        sprites = None
+        logging.error(e)
+    try:
+        weight = json['weight']
+    except KeyError as e:
+        weight = None
+        logging.error(e)
+    try:
+        height = json['height']
+    except KeyError as e:
+        height = None
+        logging.error(e)
+    try:
+        female = json['female']
+    except KeyError as e:
+        female = None
+        logging.error(e)
+    try:
+        is_shiny = json['is_shiny']
+    except KeyError as e:
+        is_shiny = None
+        logging.error(e)
+    pokemon = Pokemon(_id=_id,
+                      pokedex_id=pokedex_id,
+                      name=name,
+                      level=level,
+                      moves=moves,
+                      health=health,
+                      max_health=max_health,
+                      types=types,
+                      sprites=sprites,
+                      weight=weight,
+                      height=height,
+                      female=female,
+                      is_shiny=is_shiny)
     return pokemon
 
 
@@ -74,7 +149,7 @@ def get_pokemon_json(name):
 
 
 def get_random_poke(poke_json, level_reference):
-    id = poke_json['id']
+    pokedex_id = poke_json['id']
     name = poke_json['name']
     is_shiny = True if random.random() > 0.98 else False
     female = True if random.random() > 0.5 else False
@@ -112,7 +187,7 @@ def get_random_poke(poke_json, level_reference):
             possible_moves.append(move_)
     max_moves = 4 if len(possible_moves) > 4 else len(possible_moves)
     moves = random.sample(possible_moves, max_moves)
-    pokemon = Pokemon(id=id, name=name, moves=moves, health=health, level=level, types=types,
+    pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, level=level, types=types,
                       sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny)
     return pokemon
 

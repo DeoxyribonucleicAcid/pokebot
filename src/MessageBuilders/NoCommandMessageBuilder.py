@@ -10,5 +10,5 @@ def build_nc_msg(bot, update):
     elif player.nc_msg_state == Constants.NC_MSG_States.USERNAME.value:
         FriendlistMessageBuilder.search_friend_in_players(bot=bot, update=update)
     else:
-        bot.send_message(chat_id=update.message.chat_id, text='Invalid Message State')
+        bot.send_message(chat_id=update.message.chat_id, text='Invalid Message State, Please Try Again!')
         MessageHelper.reset_states(bot, update)

@@ -5,7 +5,7 @@ import telegram
 import Constants
 import DBAccessor
 from MessageBuilders import BagMessageBuilder, TradeMessageBuilder, ToggleCatchMessageBuilder, ItemBagMessageBuilder, \
-    MenuMessageBuilder, MessageHelper, FriendlistMessageBuilder
+    MenuMessageBuilder, MessageHelper, FriendlistMessageBuilder, PokeDisplayBuilder
 
 
 def process_callback(bot, update):
@@ -33,7 +33,7 @@ def process_callback(bot, update):
 
     elif data.startswith('menu-'):
         if data == 'menu-bag':
-            BagMessageBuilder.build_msg_bag(bot, update.effective_message.chat_id)
+            BagMessageBuilder.build_msg_bag(bot, update.effective_message.chat_id, page_number=0)
         elif data == 'menu-trade':
             TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id)
         elif data == 'menu-catch':
@@ -50,5 +50,13 @@ def process_callback(bot, update):
             FriendlistMessageBuilder.build_friendlist_message(bot=bot, chat_id=update.effective_message.chat_id)
     elif data.startswith('friend-'):
         FriendlistMessageBuilder.friend_callback_handler(bot=bot, update=update)
+    elif data.startswith('bag-page-'):
+        page_num = int(data[9:])
+        BagMessageBuilder.build_msg_bag(bot=bot, chat_id=update.effective_message.chat_id, page_number=page_num)
+    elif data.startswith('pokemon-display-'):
+        poke_id = int(data[16:])
+        poke = player.get_pokemon(poke_id)
+        if poke is not None:
+            PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=update.effective_message.chat_id, pokemon=poke)
     else:
         raise ValueError('Invalid callback data: ' + data)

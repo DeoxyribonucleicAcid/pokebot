@@ -10,7 +10,7 @@ class Item:
 
     def serialize_item(self):
         serial = {
-            'id': self.id,
+            '_id': self.id,
             'name': self.name,
             'attributes': self.attributes
         }
@@ -18,7 +18,7 @@ class Item:
 
 
 def deserialize_item(json):
-    item = Item(json['id'],
+    item = Item(json['_id'],
                 json['name'],
                 json['attributes'])
     return item

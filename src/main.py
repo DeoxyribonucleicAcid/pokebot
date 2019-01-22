@@ -25,7 +25,7 @@ from src.EichState import EichState
 
 @MessageBuilder.send_typing_action
 def command_handler_bag(bot, update):
-    BagMessageBuilder.build_msg_bag(bot, update.message.chat_id)
+    BagMessageBuilder.build_msg_bag(bot, update.message.chat_id, page_number=0)
 
 
 def command_handler_encounter(bot, job):
