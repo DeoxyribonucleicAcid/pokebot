@@ -8,13 +8,14 @@ import Constants
 import DBAccessor
 import Message
 import Player
-from MessageBuilders import MessageHelper
+from MessageBuilders import MessageHelper, ToggleCatchMessageBuilder
 
 
 def send_menu_message(bot, update):
     player = DBAccessor.get_player(update.message.chat_id)
     if player is not None:
-        MessageHelper.delete_messages_by_type(bot=bot, player=player, type=Constants.MENU_MSG)
+        MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
+                                              player=player, type=Constants.MENU_MSG)
     text, reply_markup = build_msg_menu(player.encounters if player is not None else False)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
@@ -50,11 +51,23 @@ def build_msg_menu(encounters: bool):
         catch_button_text = u'Encounters  ' + emojize(":white_check_mark:", use_aliases=True)  # \U00002713'
     else:
         catch_button_text = u'Encounters  ' + emojize(":x:", use_aliases=True)  # \U0000274C'
-    keys = [[InlineKeyboardButton(text='Bag', callback_data='menu-bag'),
-             InlineKeyboardButton(text='Trade', callback_data='menu-trade')],
-            [InlineKeyboardButton(text=catch_button_text, callback_data='menu-catch'),
-             InlineKeyboardButton(text='Items', callback_data='menu-items')],
-            [InlineKeyboardButton(text='Friend List', callback_data='menu-friendlist')]]
+    keys = [[InlineKeyboardButton(text='Bag', callback_data=Constants.CALLBACK.MENU_BAG),
+             InlineKeyboardButton(text='Trade', callback_data=Constants.CALLBACK.MENU_TRADE)],
+            [InlineKeyboardButton(text=catch_button_text, callback_data=Constants.CALLBACK.MENU_CATCH),
+             InlineKeyboardButton(text='Items', callback_data=Constants.CALLBACK.MENU_ITEMS)],
+            [InlineKeyboardButton(text='Friend List', callback_data=Constants.CALLBACK.MENU_FRIENDLIST)]]
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup
+
+
+def toggle_encounter(bot, chat_id):
+    player = DBAccessor.get_player(chat_id)
+    menu_msg_id = player.get_messages(Constants.MENU_MSG)[-1]._id
+    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id,
+                                          player=player, type=Constants.MENU_INFO_MSG)
+    if player.encounters:
+        ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=chat_id)
+    else:
+        ToggleCatchMessageBuilder.build_catch_message(bot=bot, chat_id=chat_id)
+    update_menu_message(bot, chat_id, menu_msg_id)

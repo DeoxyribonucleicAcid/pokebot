@@ -1,69 +1,73 @@
-import logging
+from MessageBuilders import TradeMessageBuilder, BagMessageBuilder, PokeDisplayBuilder, \
+    FriendlistMessageBuilder, EncounterMessageBuilder, MenuMessageBuilder, ItemBagMessageBuilder
 
-import telegram
 
-import Constants
-import DBAccessor
-from MessageBuilders import BagMessageBuilder, TradeMessageBuilder, ToggleCatchMessageBuilder, ItemBagMessageBuilder, \
-    MenuMessageBuilder, MessageHelper, FriendlistMessageBuilder, PokeDisplayBuilder
+class CALLBACK_HANDLER:
+    callbacks = {
+        'menu': {
+            'bag': BagMessageBuilder.build_msg_bag,
+            'trade': TradeMessageBuilder.build_msg_trade,
+            'catch': MenuMessageBuilder.toggle_encounter,
+            'items': ItemBagMessageBuilder.build_msg_item_bag,
+            'friendlist': FriendlistMessageBuilder.build_friendlist_message
+        },
+        'bag': {
+            'page': BagMessageBuilder.build_msg_bag,
+        },
+        'pokemon': {
+            'display': {
+                'edit': {
+                    'name': None,
+                    'team': None
+                },
+                'view': PokeDisplayBuilder.build_poke_display
+            }
+        },
+        'trade': {
+            'choose': {
+                'page': BagMessageBuilder.build_msg_bag,
+                'pokemon': None
+            },
+            'invite': {
+                'confirm': TradeMessageBuilder.trade_invite_confirm,
+                'deny': TradeMessageBuilder.trade_invite_deny
+            },
+            'inspect': {
+                'pokemon': PokeDisplayBuilder.build_poke_display
+            }
+        },
+        'friend': {
+            'name': None,
+            'trade': TradeMessageBuilder.build_msg_trade,
+            'duel': None,
+            'delete': FriendlistMessageBuilder.delete_friend,
+
+            'conf_delete': {
+                'yes': FriendlistMessageBuilder.delete_friend_confirm,
+                'no': FriendlistMessageBuilder.delete_friend_deny
+            },
+            'add': FriendlistMessageBuilder.build_add_friend_initial_message,
+            'notify_on_add': {
+                'yes': FriendlistMessageBuilder.add_friend_callback,
+                'no': FriendlistMessageBuilder.add_friend_no_callback
+            }
+        },
+        'catch': EncounterMessageBuilder.catch,
+    }
+
+    @staticmethod
+    def handle(bot, chat_id, callback):
+        elems = callback.split('%')
+        id_elems = elems[0].split('-')
+        params = elems[1:]
+        cb_function = CALLBACK_HANDLER.callbacks[id_elems[0]]
+        for id in id_elems[1:]:
+            cb_function = cb_function[id]
+        if type(cb_function) is type(None):
+            return bot.send_message(chat_id=chat_id,
+                                    text='Method not implemented :/')
+        return cb_function(bot, chat_id, *params)
 
 
 def process_callback(bot, update):
-    data = update.callback_query.data
-    player = DBAccessor.get_player(update.effective_chat.id)
-    if data.startswith('catch-'):
-        option = int(data[6:])
-        if option == player.pokemon_direction:
-            bot.send_message(chat_id=player.chat_id, text='captured ' + player.catch_pokemon.name + '!')
-            for i in player.get_messages(Constants.ENCOUNTER_MSG):
-                try:
-                    bot.delete_message(chat_id=player.chat_id, message_id=i._id)
-                except telegram.error.BadRequest as e:
-                    logging.error(e)
-            # Reset Player's encounter
-            player.pokemon.append(player.catch_pokemon)
-            update = DBAccessor.get_update_query(pokemon=player.pokemon, in_encounter=False, pokemon_direction=None,
-                                                 catch_pokemon=None)
-            DBAccessor.update_player(_id=player.chat_id, update=update)
-    elif data.startswith('catchmenu-'):
-        if data == 'menu-item':
-            pass
-        elif data == 'menu-escape':
-            pass
-
-    elif data.startswith('menu-'):
-        if data == 'menu-bag':
-            BagMessageBuilder.build_msg_bag(bot, update.effective_message.chat_id, page_number=0, trade_mode=False)
-        elif data == 'menu-trade':
-            TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id)
-        elif data == 'menu-catch':
-            MessageHelper.delete_messages_by_type(bot=bot, player=player, type=Constants.MENU_INFO_MSG)
-            if player.encounters:
-                ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=update.effective_message.chat_id)
-            else:
-                ToggleCatchMessageBuilder.build_catch_message(bot=bot, chat_id=update.effective_message.chat_id)
-            MenuMessageBuilder.update_menu_message(bot, update.effective_message.chat_id,
-                                                   update.effective_message.message_id)
-        elif data == 'menu-items':
-            ItemBagMessageBuilder.build_msg_item_bag(bot=bot, chat_id=update.effective_message.chat_id)
-        elif data == 'menu-friendlist':
-            FriendlistMessageBuilder.build_friendlist_message(bot=bot, chat_id=update.effective_message.chat_id)
-    elif data.startswith('friend-'):
-        FriendlistMessageBuilder.friend_callback_handler(bot=bot, update=update)
-    elif data.startswith('bag-page-'):
-        trade_mode = bool(int(data[9:].split('-')[0]))
-        page_num = int(data[9:].split('-')[1])
-        BagMessageBuilder.build_msg_bag(bot=bot, chat_id=update.effective_message.chat_id, page_number=page_num,
-                                        trade_mode=trade_mode)
-    elif data.startswith('pokemon-display-'):
-        trade_mode = bool(int(data[16:].split('-')[0]))
-        page_num = int(data[16:].split('-')[1])
-        poke_id = int(data[16:].split('-')[2])
-        poke = player.get_pokemon(poke_id)
-        if poke is not None:
-            PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=update.effective_message.chat_id, pokemon=poke,
-                                                  page_num=page_num, trade_mode=trade_mode)
-    elif data.startswith('trade-'):
-        TradeMessageBuilder.trade_callback_handler(bot=bot, update=update)
-    else:
-        raise ValueError('Invalid callback data: ' + data)
+    CALLBACK_HANDLER.handle(bot=bot, chat_id=update.effective_message.chat_id, callback=update.callback_query.data)

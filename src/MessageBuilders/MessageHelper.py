@@ -6,7 +6,7 @@ import Constants
 import DBAccessor
 
 
-def delete_messages_by_type(bot, player, type):
+def delete_messages_by_type(bot, chat_id, player, type):
     if not (type is Constants.ENCOUNTER_MSG or Constants.BAG_MSG or Constants.MENU_MSG or Constants.MENU_INFO_MSG):
         return False
     else:

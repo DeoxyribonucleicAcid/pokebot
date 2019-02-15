@@ -12,8 +12,11 @@ import Message
 import Pokemon
 
 
-def build_poke_display(bot, chat_id, pokemon, page_num, trade_mode: bool):
+def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
+    page_num = int(page_num)
+    trade_mode = bool(int(trade_mode))
     player = DBAccessor.get_player(chat_id)
+    pokemon = player.get_pokemon(int(poke_id))
     for i in player.get_messages(Constants.BAG_MSG) + player.get_messages(Constants.POKE_DISPLAY_MSG):
         try:
             bot.delete_message(chat_id=player.chat_id, message_id=i._id)
@@ -48,9 +51,9 @@ def build_poke_display(bot, chat_id, pokemon, page_num, trade_mode: bool):
 
 def get_display_keyboard_editing(poke_id, page_num):
     keys = [
-        [InlineKeyboardButton(text='Edit Name', callback_data='pokemon-display-edit-name-' + str(poke_id))],
-        [InlineKeyboardButton(text='Add to Team', callback_data='pokemon-display-edit-team-' + str(poke_id))],
-        [InlineKeyboardButton(text='\u2190 Back', callback_data='bag-page-' + str(int(False)) + '-' + str(page_num))]
+        [InlineKeyboardButton(text='Edit Name', callback_data=Constants.CALLBACK.POKE_DISPLAY_EDIT_NAME(poke_id))],
+        [InlineKeyboardButton(text='Add to Team', callback_data=Constants.CALLBACK.POKE_DISPLAY_EDIT_TEAM(poke_id))],
+        [InlineKeyboardButton(text='\u2190 Back', callback_data=Constants.CALLBACK.BAG_PAGE(False, page_num))]
     ]
     reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
     return reply_keyboard
@@ -59,9 +62,9 @@ def get_display_keyboard_editing(poke_id, page_num):
 def get_display_keyboard_trading(poke_id, page_num):
     keys = [
         [InlineKeyboardButton(text=emojize(":white_check_mark:", use_aliases=True) + 'Choose',
-                              callback_data='trade-choose-pokemon-' + str(poke_id))],
+                              callback_data=Constants.CALLBACK.TRADE_CHOOSE_POKEMON(poke_id))],
         [InlineKeyboardButton(text='\u2190 Back',
-                              callback_data='bag-page-' + str(int(True)) + '-' + str(page_num))]
+                              callback_data=Constants.CALLBACK.BAG_PAGE(True, page_num))]
     ]
     reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
     return reply_keyboard

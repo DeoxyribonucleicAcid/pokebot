@@ -42,15 +42,15 @@ def build_encounter_message(bot):
                 random.choice(list(EichState.names_dict['pokenames'].keys()))]
             pokemon_direction = random.randint(0, 8)
             pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
-            keys = [[InlineKeyboardButton(text='\u2196', callback_data='catch-0'),
-                     InlineKeyboardButton(text='\u2191', callback_data='catch-1'),
-                     InlineKeyboardButton(text='\u2197', callback_data='catch-2')],
-                    [InlineKeyboardButton(text='\u2190', callback_data='catch-3'),
-                     InlineKeyboardButton(text='o', callback_data='catch-4'),
-                     InlineKeyboardButton(text='\u2192', callback_data='catch-5')],
-                    [InlineKeyboardButton(text='\u2199', callback_data='catch-6'),
-                     InlineKeyboardButton(text='\u2193', callback_data='catch-7'),
-                     InlineKeyboardButton(text='\u2198', callback_data='catch-8')]]
+            keys = [[InlineKeyboardButton(text='\u2196', callback_data=Constants.CALLBACK.CATCH(0)),
+                     InlineKeyboardButton(text='\u2191', callback_data=Constants.CALLBACK.CATCH(1)),
+                     InlineKeyboardButton(text='\u2197', callback_data=Constants.CALLBACK.CATCH(2))],
+                    [InlineKeyboardButton(text='\u2190', callback_data=Constants.CALLBACK.CATCH(3)),
+                     InlineKeyboardButton(text='o', callback_data=Constants.CALLBACK.CATCH(4)),
+                     InlineKeyboardButton(text='\u2192', callback_data=Constants.CALLBACK.CATCH(5))],
+                    [InlineKeyboardButton(text='\u2199', callback_data=Constants.CALLBACK.CATCH(6)),
+                     InlineKeyboardButton(text='\u2193', callback_data=Constants.CALLBACK.CATCH(7)),
+                     InlineKeyboardButton(text='\u2198', callback_data=Constants.CALLBACK.CATCH(8))]]
             reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
             sprites = {k: v for k, v in pokemon.sprites.items() if v is not None}
             sprite = pokemon.sprites[random.choice(list(sprites.keys()))]
@@ -84,3 +84,22 @@ def build_encounter_message(bot):
                                                      encounters=False)
                 logging.error(e)
             DBAccessor.update_player(_id=player.chat_id, update=update)
+
+
+def catch(bot, chat_id, option):
+    player = DBAccessor.get_player(chat_id)
+    option = int(option)
+    if option == player.pokemon_direction:
+        if player.catch_pokemon._id == player.pokemon[-1]._id:
+            return
+        bot.send_message(chat_id=player.chat_id, text='captured ' + player.catch_pokemon.name + '!')
+        for i in player.get_messages(Constants.ENCOUNTER_MSG):
+            try:
+                bot.delete_message(chat_id=player.chat_id, message_id=i._id)
+            except telegram.error.BadRequest as e:
+                logging.error(e)
+        # Reset Player's encounter
+        player.pokemon.append(player.catch_pokemon)
+        update = DBAccessor.get_update_query(pokemon=player.pokemon, in_encounter=False, pokemon_direction=None,
+                                             catch_pokemon=None)
+        DBAccessor.update_player(_id=player.chat_id, update=update)
