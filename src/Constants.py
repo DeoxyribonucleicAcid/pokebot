@@ -1,6 +1,7 @@
 # MESSAGE IDENTIFIERS
 from enum import Enum
 
+# Message Types
 ENCOUNTER_MSG = 'encounter_msg'
 MENU_MSG = 'menu_msg'
 BAG_MSG = 'bag_msg'
@@ -17,6 +18,7 @@ POKE_DISPLAY_MSG = 'poke_display_msg'
 class NC_MSG_States(Enum):
     INFO = 0
     USERNAME = 1
+    DISPLAY_EDIT_NAME = 2
 
 
 class CALLBACK:
@@ -34,11 +36,11 @@ class CALLBACK:
 
     # DISPlAY CALLBACKS
     @staticmethod
-    def POKE_DISPLAY_EDIT_TEAM(pokemon_id: int):
+    def POKE_DISPLAY_EDIT_NAME(pokemon_id: int):
         return 'pokemon-display-edit-name%' + str(pokemon_id)
 
     @staticmethod
-    def POKE_DISPLAY_EDIT_NAME(pokemon_id: int):
+    def POKE_DISPLAY_EDIT_TEAM(pokemon_id: int):
         return 'pokemon-display-edit-team%' + str(pokemon_id)
 
     @staticmethod

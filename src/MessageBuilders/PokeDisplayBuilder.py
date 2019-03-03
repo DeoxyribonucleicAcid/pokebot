@@ -2,7 +2,6 @@ import logging
 import time
 from io import BytesIO
 
-import telegram
 from emoji import emojize
 from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -10,6 +9,7 @@ import Constants
 import DBAccessor
 import Message
 import Pokemon
+from MessageBuilders import MessageHelper
 
 
 def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
@@ -17,11 +17,9 @@ def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
     trade_mode = bool(int(trade_mode))
     player = DBAccessor.get_player(chat_id)
     pokemon = player.get_pokemon(int(poke_id))
-    for i in player.get_messages(Constants.BAG_MSG) + player.get_messages(Constants.POKE_DISPLAY_MSG):
-        try:
-            bot.delete_message(chat_id=player.chat_id, message_id=i._id)
-        except telegram.error.BadRequest as e:
-            logging.error(e)
+    # Delete msgs
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.BAG_MSG)
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
 
     text = 'Pokedex ID: ' + str(pokemon.pokedex_id) + '\n' + \
            'Name: ' + str(pokemon.name) + '\n' + \
@@ -68,3 +66,42 @@ def get_display_keyboard_trading(poke_id, page_num):
     ]
     reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
     return reply_keyboard
+
+
+def poke_edit_name(bot, chat_id, pokemon_id):
+    player = DBAccessor.get_player(int(chat_id))
+    pokemon = player.get_pokemon(int(pokemon_id))
+    logging.info(str(pokemon_id) + ' ' + str(chat_id))
+    if pokemon is None:
+        bot.send_message(chat_id=chat_id,
+                         text='An error occurred! Couldn\'t find requested pokemon!')
+        return
+    query = DBAccessor.get_update_query(chat_id=chat_id, nc_msg_state=Constants.NC_MSG_States.DISPLAY_EDIT_NAME,
+                                        edit_pokemon=pokemon_id)
+    DBAccessor.update_player(_id=chat_id, update=query)
+    bot.send_message(chat_id=chat_id,
+                     text='Send me the new name of ' + str(pokemon.name))
+
+
+def poke_change_name(bot, chat_id, new_name):
+    player = DBAccessor.get_player(chat_id)
+    pokemon = player.get_pokemon(player.edit_pokemon)
+    pokemon.name = new_name
+    player.update_pokemon(pokemon=pokemon)
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
+    query = DBAccessor.get_update_query(chat_id=chat_id, pokemon=player.pokemon, edit_pokemon=None)
+    DBAccessor.update_player(_id=chat_id, update=query)
+
+
+def poke_edit_team(bot, chat_id, poke_id):
+    player = DBAccessor.get_player(chat_id)
+    if len(player.pokemon_team) >= 6:
+        bot.send_message(chat_id=chat_id,
+                         text='Your team is full, remove some first!')
+    else:
+        new_team_pokemon = player.remove_pokemon(pokemon_id=poke_id)
+        player.pokemon_team.append(new_team_pokemon)
+        query = DBAccessor.get_update_query(chat_id=chat_id, pokemon=player.pokemon, pokemon_team=player.pokemon_team)
+        DBAccessor.update_player(_id=chat_id, update=query)
+        bot.send_message(chat_id=chat_id,
+                         text='Added ' + str(new_team_pokemon.name) + ' to your team!')

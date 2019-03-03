@@ -15,7 +15,7 @@ def send_menu_message(bot, update):
     player = DBAccessor.get_player(update.message.chat_id)
     if player is not None:
         MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
-                                              player=player, type=Constants.MENU_MSG)
+                                              type=Constants.MENU_MSG)
     text, reply_markup = build_msg_menu(player.encounters if player is not None else False)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
@@ -65,7 +65,7 @@ def toggle_encounter(bot, chat_id):
     player = DBAccessor.get_player(chat_id)
     menu_msg_id = player.get_messages(Constants.MENU_MSG)[-1]._id
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id,
-                                          player=player, type=Constants.MENU_INFO_MSG)
+                                          type=Constants.MENU_INFO_MSG)
     if player.encounters:
         ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=chat_id)
     else:

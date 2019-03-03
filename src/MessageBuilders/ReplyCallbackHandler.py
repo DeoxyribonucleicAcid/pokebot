@@ -17,7 +17,7 @@ class CALLBACK_HANDLER:
         'pokemon': {
             'display': {
                 'edit': {
-                    'name': None,
+                    'name': PokeDisplayBuilder.poke_edit_name,
                     'team': None
                 },
                 'view': PokeDisplayBuilder.build_poke_display

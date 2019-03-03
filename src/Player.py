@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class Player:
     def __init__(self, chat_id, username: str = None, friendlist=None, items=None, pokemon=None, pokemon_team=None,
                  last_encounter=None,
-                 in_encounter=None, trade_pokemon=None,
+                 in_encounter=None, trade_pokemon=None, edit_pokemon_id=None,
                  pokemon_direction=None, nc_msg_state=None, catch_pokemon=None, encounters=False,
                  messages_to_delete=None):
         self.chat_id: int = chat_id
@@ -28,6 +28,7 @@ class Player:
         self.nc_msg_state: int = nc_msg_state
         self.catch_pokemon: Pokemon = catch_pokemon
         self.trade_pokemon: Pokemon = trade_pokemon
+        self.edit_pokemon_id = edit_pokemon_id
         self.encounters: bool = encounters
         self.messages_to_delete: List[Message.Message] = [] if messages_to_delete is None else messages_to_delete
 
@@ -47,6 +48,20 @@ class Player:
                 return pokemon
         return None
 
+    def remove_pokemon(self, pokemon_id):
+        for i, poke in enumerate(self.pokemon):
+            if pokemon_id == poke._id:
+                self.pokemon.remove(poke)
+                return poke
+        return None
+
+    def update_pokemon(self, pokemon: Pokemon):
+        for i, poke in enumerate(self.pokemon):
+            if pokemon._id == poke._id:
+                self.pokemon[i] = pokemon
+                return True
+        return False
+
 
 def serialize_player(player: Player):
     serial = {'_id': player.chat_id,
@@ -61,6 +76,7 @@ def serialize_player(player: Player):
               'nc_msg_state': player.nc_msg_state,
               'catch_pokemon': player.catch_pokemon.serialize_pokemon() if player.catch_pokemon is not None else None,
               'trade_pokemon': player.trade_pokemon.serialize_pokemon() if player.trade_pokemon is not None else None,
+              'edit_pokemon_id': player.edit_pokemon_id,
               'encounters': player.encounters,
               'messages_to_delete': [i.serialize_msg() for i in player.messages_to_delete]}
     return serial
@@ -132,6 +148,11 @@ def deserialize_player(json):
         trade_pokemon = None
         logging.error(e)
     try:
+        edit_pokemon_id = json['edit_pokemon_id']
+    except KeyError as e:
+        edit_pokemon_id = None
+        logging.error(e)
+    try:
         encounters = json['encounters']
     except KeyError as e:
         encounters = None
@@ -154,6 +175,7 @@ def deserialize_player(json):
                     nc_msg_state=nc_msg_state,
                     catch_pokemon=catch_pokemon,
                     trade_pokemon=trade_pokemon,
+                    edit_pokemon_id=edit_pokemon_id,
                     encounters=encounters,
                     messages_to_delete=messages_to_delete)
     return player
