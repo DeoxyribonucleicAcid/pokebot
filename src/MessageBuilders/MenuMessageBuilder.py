@@ -6,8 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
-import Message
-import Player
+from Entities import Player, Message
 from MessageBuilders import MessageHelper, ToggleCatchMessageBuilder
 
 

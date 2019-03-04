@@ -9,8 +9,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
-import Message
-import Pokemon
+from Entities import Pokemon, Message
+from Entities.Encounter import Encounter
+from MessageBuilders import MessageHelper
 from src.EichState import EichState
 
 
@@ -21,7 +22,7 @@ def build_encounter_message(bot):
         draw = random.random()
         now = time.time()
         last_enc = float(player.last_encounter)
-        if player.in_encounter:
+        if player.encounter is not None:
             if now - last_enc >= 900:
                 # Reset player's catch state
                 for i in player.get_messages(Constants.ENCOUNTER_MSG):
@@ -29,10 +30,7 @@ def build_encounter_message(bot):
                         bot.delete_message(chat_id=player.chat_id, message_id=i._id)
                     except telegram.error.BadRequest as e:
                         logging.error(e)
-                update = DBAccessor.get_update_query(last_encounter=now,
-                                                     in_encounter=False,
-                                                     pokemon_direction=None,
-                                                     catch_pokemon=None)
+                update = DBAccessor.get_update_query(last_encounter=now, encounter=None)
                 DBAccessor.update_player(_id=player.chat_id, update=update)
                 logging.info('reset encounter for player ' + str(player.chat_id))
             continue
@@ -60,27 +58,19 @@ def build_encounter_message(bot):
             image.save(bio, 'PNG')
             bio.seek(0)
             try:
-                for i in player.get_messages(Constants.ENCOUNTER_MSG):
-                    try:
-                        bot.delete_message(chat_id=player.chat_id, message_id=i._id)
-                    except telegram.error.BadRequest as e:
-                        logging.error(e)
+                MessageHelper.delete_messages_by_type(bot, chat_id=player.chat_id, type=Constants.ENCOUNTER_MSG)
                 msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
                                      photo=bio,
                                      reply_markup=reply_markup)
                 player.messages_to_delete.append(Message.Message(_id=msg.message_id,
                                                                  _title=Constants.ENCOUNTER_MSG,
                                                                  _time_sent=now))
-                update = DBAccessor.get_update_query(last_encounter=now,
-                                                     in_encounter=True,
-                                                     pokemon_direction=pokemon_direction,
-                                                     catch_pokemon=pokemon,
+                encounter = Encounter(pokemon_direction=pokemon_direction, pokemon=pokemon)
+                update = DBAccessor.get_update_query(last_encounter=now, encounter=encounter,
                                                      messages_to_delete=player.messages_to_delete)
             except telegram.error.Unauthorized as e:
                 update = DBAccessor.get_update_query(last_encounter=now,
-                                                     in_encounter=False,
-                                                     pokemon_direction=None,
-                                                     catch_pokemon=None,
+                                                     encounter=None,
                                                      encounters=False)
                 logging.error(e)
             DBAccessor.update_player(_id=player.chat_id, update=update)
@@ -89,17 +79,16 @@ def build_encounter_message(bot):
 def catch(bot, chat_id, option):
     player = DBAccessor.get_player(chat_id)
     option = int(option)
-    if option == player.pokemon_direction:
-        if player.catch_pokemon._id == player.pokemon[-1]._id:
+    if option == player.encounter.pokemon_direction:
+        if player.encounter.pokemon._id == player.pokemon[-1]._id:
             return
-        bot.send_message(chat_id=player.chat_id, text='captured ' + player.catch_pokemon.name + '!')
+        bot.send_message(chat_id=player.chat_id, text='captured ' + player.encounter.pokemon.name + '!')
         for i in player.get_messages(Constants.ENCOUNTER_MSG):
             try:
                 bot.delete_message(chat_id=player.chat_id, message_id=i._id)
             except telegram.error.BadRequest as e:
                 logging.error(e)
         # Reset Player's encounter
-        player.pokemon.append(player.catch_pokemon)
-        update = DBAccessor.get_update_query(pokemon=player.pokemon, in_encounter=False, pokemon_direction=None,
-                                             catch_pokemon=None)
+        player.pokemon.append(player.encounter.pokemon)
+        update = DBAccessor.get_update_query(pokemon=player.pokemon, encounter=None)
         DBAccessor.update_player(_id=player.chat_id, update=update)

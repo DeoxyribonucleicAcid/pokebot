@@ -141,7 +141,7 @@ def main():
 
     updater.start_polling()
     j = updater.job_queue
-    autoup = j.run_repeating(command_handler_encounter, interval=60 * 15, first=0)
+    j.run_repeating(command_handler_encounter, interval=60 * 15, first=0)
 
 
 main()

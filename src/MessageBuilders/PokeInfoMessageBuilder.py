@@ -6,13 +6,12 @@ from io import BytesIO
 
 from telegram import ParseMode
 
-import Pokemon
+from Entities import Pokemon
 from src.EichState import EichState
 
 
 def get_poke_info(pokemon):
     poke_json = Pokemon.get_pokemon_json(pokemon)
-    # sprites = {k: v for k, v in poke_json[u'sprites'].items() if v is not None}
     type_urls = []
     for poke_type in poke_json[u'types']:
         type_urls.append(poke_type[u'type'][u'url'])

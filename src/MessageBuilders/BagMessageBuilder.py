@@ -1,14 +1,12 @@
-import logging
 import time
 from io import BytesIO
 
-import telegram
 from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
-import Message
-import Pokemon
+from Entities import Pokemon, Message
+from MessageBuilders import MessageHelper
 
 
 def build_msg_bag(bot, chat_id, trade_mode, page_number):
@@ -34,9 +32,6 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
     page_list = player.pokemon[list_start:list_end]
     keys = []
     for pokemon in page_list:
-        # sprites = [v[1] for v in i.sprites.items() if v[1] is not None]
-        # caption += '#' + str(pokemon.pokedex_id) + ' ' + str(pokemon.name) + ' ' + str(int(pokemon.level)) + '\n'
-        # pokemon_sprite_list.append(sprites[random.randint(0, len(sprites) - 1)])
         keys.append([InlineKeyboardButton(text=pokemon.name,
                                           callback_data=Constants.CALLBACK.POKE_DISPLAY_CONFIG(trade_mode=trade_mode,
                                                                                                page_number=page_number,
@@ -44,12 +39,8 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
                      ])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
-
-    for i in player.get_messages(Constants.BAG_MSG) + player.get_messages(Constants.POKE_DISPLAY_MSG):
-        try:
-            bot.delete_message(chat_id=player.chat_id, message_id=i._id)
-        except telegram.error.BadRequest as e:
-            logging.error(e)
+    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.POKE_DISPLAY_MSG)
+    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.BAG_MSG)
     if image is not None:
         bio = BytesIO()
         bio.name = 'image_bag_' + str(chat_id) + '.png'

@@ -26,7 +26,7 @@ class CALLBACK_HANDLER:
         'trade': {
             'choose': {
                 'page': BagMessageBuilder.build_msg_bag,
-                'pokemon': None
+                'pokemon': TradeMessageBuilder.trade_pokemon_chosen
             },
             'invite': {
                 'confirm': TradeMessageBuilder.trade_invite_confirm,
@@ -34,7 +34,9 @@ class CALLBACK_HANDLER:
             },
             'inspect': {
                 'pokemon': PokeDisplayBuilder.build_poke_display
-            }
+            },
+            'abort': TradeMessageBuilder.trade_abort,
+            'accept': TradeMessageBuilder.trade_accept
         },
         'friend': {
             'name': None,

@@ -53,7 +53,6 @@ def db_setup():
     else:
         raise EnvironmentError("Config file not existent or wrong format")
     client = pymongo.MongoClient(config["mongo_db_srv"])
-    test = client.test
 
     if EichState.DEBUG:
         if "database_debug" in client.list_database_names():

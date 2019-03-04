@@ -2,8 +2,7 @@ import time
 
 import Constants
 import DBAccessor
-import Message
-import Player
+from Entities import Player, Message
 
 
 def build_catch_message(bot, chat_id):

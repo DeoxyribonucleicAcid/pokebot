@@ -1,5 +1,5 @@
 import DBAccessor
-import Player
+from Entities import Player
 
 
 def update_username(bot, update):

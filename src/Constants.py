@@ -60,6 +60,9 @@ class CALLBACK:
     def TRADE_INVITE_DENY(chat_id: int):
         return 'trade-invite-deny%' + str(chat_id)
 
+    TRADE_ACCEPT = 'trade-accept'
+    TRADE_ABORT = 'trade-abort'
+
     # FRIEND CALLBACKS
     FRIEND_ADD = 'friend-add'
     FRIEND_NAME = 'friend_name'
@@ -78,15 +81,15 @@ class CALLBACK:
 
     @staticmethod
     def FRIEND_CONFIRM_DELETE_YES(friend_id: int):
-        return 'friend-confirm-delete-yes%' + str(friend_id)
+        return 'friend-conf_delete-yes%' + str(friend_id)
 
-    FRIEND_CONFIRM_DELETE_NO = 'friend-confirm-delete-no'
+    FRIEND_CONFIRM_DELETE_NO = 'friend-conf_delete-no'
 
     @staticmethod
     def FRIEND_ADD_NOTIFY_YES(player_username: str):
-        return 'friend-add-notify-yes%' + player_username
+        return 'friend-notify_on_add-yes%' + player_username
 
-    FRIEND_ADD_NOTIFY_NO = 'friend-add-notify-no'
+    FRIEND_ADD_NOTIFY_NO = 'friend-notify_on_add-no'
 
     @staticmethod
     def CATCH(direction: int):

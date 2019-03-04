@@ -7,7 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
-import Message
+from Entities import Message
 from MessageBuilders import TradeMessageBuilder
 
 
@@ -113,7 +113,7 @@ def friend_callback_handler(bot, update):
         TradeMessageBuilder.build_msg_trade(bot=bot, chat_id=update.effective_message.chat_id, player_id=friend_id)
     elif data.startswith('friend-duel-'):
         friend_id = int(data[12:])
-        pass
+        # TODO
     elif data.startswith('friend-delete-'):
         friend_id = int(data[14:])
         delete_friend(bot=bot, chat_id=update.effective_message.chat_id, friend_to_be_deleted=friend_id)

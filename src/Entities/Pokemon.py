@@ -153,25 +153,9 @@ def get_random_poke(poke_json, level_reference):
     name = poke_json['name']
     is_shiny = True if random.random() > 0.98 else False
     female = True if random.random() > 0.5 else False
-    sprites = {}
-    ps = poke_json['sprites']
 
-    if not female and not is_shiny:
-        sprites = {'front': ps['front_default'], 'back': ps['back_default']}
-    elif not female and is_shiny:
-        sprites = {'front': ps['front_shiny'] if ps['front_shiny'] is not None else ps['front_default'],
-                   'back': ps['back_shiny'] if ps['back_shiny'] is not None else ps['back_default']}
-    elif female and not is_shiny:
-        sprites = {'front': ps['front_female'] if ps['front_female'] is not None else ps['front_default'],
-                   'back': ps['back_female'] if ps['back_female'] is not None else ps['back_default']}
-    elif female and is_shiny:
-        sprites = {
-            'front': ps['front_shiny_female'] if ps['front_shiny_female'] is not None
-            else ps['front_shiny'] if ps['front_shiny'] is not None
-            else ps['front_default'],
-            'back': ps['back_shiny_female'] if ps['back_shiny_female'] is not None
-            else ps['back_shiny'] if ps['back_shiny'] is not None
-            else ps['back_default']}
+    sprites = define_sprite_by_attributes(poke_json=poke_json, female=female, is_shiny=is_shiny)
+
     height = poke_json['height']
     weight = poke_json['weight']
     health = level_reference * 1.5
@@ -192,8 +176,32 @@ def get_random_poke(poke_json, level_reference):
     return pokemon
 
 
+def define_sprite_by_attributes(poke_json, female, is_shiny):
+    sprites = {}
+    ps = poke_json['sprites']
+
+    if not female and not is_shiny:
+        sprites = {'front': ps['front_default'], 'back': ps['back_default']}
+    elif not female and is_shiny:
+        sprites = {'front': ps['front_shiny'] if ps['front_shiny'] is not None else ps['front_default'],
+                   'back': ps['back_shiny'] if ps['back_shiny'] is not None else ps['back_default']}
+    elif female and not is_shiny:
+        sprites = {'front': ps['front_female'] if ps['front_female'] is not None else ps['front_default'],
+                   'back': ps['back_female'] if ps['back_female'] is not None else ps['back_default']}
+    elif female and is_shiny:
+        sprites = {
+            'front': ps['front_shiny_female'] if ps['front_shiny_female'] is not None
+            else ps['front_shiny'] if ps['front_shiny'] is not None
+            else ps['front_default'],
+            'back': ps['back_shiny_female'] if ps['back_shiny_female'] is not None
+            else ps['back_shiny'] if ps['back_shiny'] is not None
+            else ps['back_default']}
+    return sprites
+
+
 def get_sprite_dir(poke_name):
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/img/' + poke_name + '.png'
+    filepath = os.path.join('.', 'res', 'img', poke_name + '.png')[1:]
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath
 
 
 def get_poke_image(sprite):
@@ -211,7 +219,8 @@ def build_pokemon_catch_img(pokemon_sprite, direction):
     width_total = edge_length * width
     height_total = edge_length * height
     alpha = image.convert('RGBA').split()[-1]
-    background = Image.open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/img/background1.png')
+    filepath = os.path.join('.', 'res', 'img', 'background1.png')[1:]
+    background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
     w, h = background.size
     background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
     background.thumbnail((width_total, height_total), Image.ANTIALIAS)
@@ -256,11 +265,31 @@ def build_pokemon_bag_image(pokemon_sprite_list):
     return new_im
 
 
+def build_pokemon_trade_image(pokemon_going_sprite, pokemon_coming_sprite):
+    image_going = get_poke_image(sprite=pokemon_going_sprite)
+    alpha_going = image_going.convert('RGBA').split()[-1]
+
+    width, height = image_going.size
+    width_total, height_total = 3 * width, 3 * height
+
+    image_coming = get_poke_image(sprite=pokemon_coming_sprite)
+    alpha_coming = image_coming.convert('RGBA').split()[-1]
+
+    filepath = os.path.join('.', 'res', 'img', 'background1.png')[1:]
+    background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
+    background.thumbnail((int(width_total), int(height_total)), Image.ANTIALIAS)
+
+    background.paste(image_going, (int(width_total * 0.18), int(height_total * 0.25)), mask=alpha_going)
+    background.paste(image_coming, (int(width_total * 0.50), int(height_total * 0.8)), mask=alpha_coming)
+    return background
+
+
 def get_pokemon_portrait_image(pokemon_sprite):
     image = get_poke_image(sprite=pokemon_sprite)
     width, height = image.size
     alpha = image.convert('RGBA').split()[-1]
-    background = Image.open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/img/background1.png')
+    filepath = os.path.join('.', 'res', 'img', 'background1.png')[1:]
+    background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
     w, h = background.size
     background = background.crop(((w - h) / 2, 0, w - (w - h) / 2, h))
     background.thumbnail((width, height), Image.ANTIALIAS)
