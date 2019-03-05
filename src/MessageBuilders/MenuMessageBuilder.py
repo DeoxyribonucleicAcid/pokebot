@@ -7,6 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import Constants
 import DBAccessor
 from Entities import Player, Message
+from Entities.Trade import Trade
 from MessageBuilders import MessageHelper, ToggleCatchMessageBuilder
 
 
@@ -15,7 +16,7 @@ def send_menu_message(bot, update):
     if player is not None:
         MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
                                               type=Constants.MENU_MSG)
-    text, reply_markup = build_msg_menu(player.encounters if player is not None else False)
+    text, reply_markup = build_msg_menu(player.encounters if player is not None else False, trade=player.trade)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
     if player is None:
@@ -36,7 +37,7 @@ def update_menu_message(bot, chat_id, msg_id):
     # msg_id = len(player.messages_to_delete) - 1 - next(
     #     (i for i, x in enumerate(reversed(player.messages_to_delete)) if x._title == Constants.MENU_MSG),
     #     len(player.messages_to_delete))
-    text, reply_markup = build_msg_menu(encounters=player.encounters)
+    text, reply_markup = build_msg_menu(encounters=player.encounters, trade=player.trade)
     try:
         bot.edit_message_text(chat_id=chat_id, text=text, message_id=msg_id,
                               reply_markup=reply_markup)
@@ -45,16 +46,23 @@ def update_menu_message(bot, chat_id, msg_id):
             raise e
 
 
-def build_msg_menu(encounters: bool):
+def build_msg_menu(encounters: bool, trade: Trade):
+    x = None
     if encounters:
         catch_button_text = u'Encounters  ' + emojize(":white_check_mark:", use_aliases=True)  # \U00002713'
     else:
-        catch_button_text = u'Encounters  ' + emojize(":x:", use_aliases=True)  # \U0000274C'
+        x = emojize(":x:", use_aliases=True) if x is None else x
+        catch_button_text = u'Encounters  {}'.format(x)  # \U0000274C'
     keys = [[InlineKeyboardButton(text='Bag', callback_data=Constants.CALLBACK.MENU_BAG),
              InlineKeyboardButton(text='Trade', callback_data=Constants.CALLBACK.MENU_TRADE)],
             [InlineKeyboardButton(text=catch_button_text, callback_data=Constants.CALLBACK.MENU_CATCH),
              InlineKeyboardButton(text='Items', callback_data=Constants.CALLBACK.MENU_ITEMS)],
             [InlineKeyboardButton(text='Friend List', callback_data=Constants.CALLBACK.MENU_FRIENDLIST)]]
+    if trade is not None:
+        x = emojize(":x:", use_aliases=True) if x is None else x
+        keys.append([InlineKeyboardButton(
+            text='{} Abort trade with {} {}'.format(x, DBAccessor.get_player(int(trade.partner_id)).username, x),
+            callback_data=Constants.CALLBACK.TRADE_ABORT)])
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup

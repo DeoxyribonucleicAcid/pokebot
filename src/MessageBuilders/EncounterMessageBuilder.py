@@ -30,8 +30,8 @@ def build_encounter_message(bot):
                         bot.delete_message(chat_id=player.chat_id, message_id=i._id)
                     except telegram.error.BadRequest as e:
                         logging.error(e)
-                update = DBAccessor.get_update_query(last_encounter=now, encounter=None)
-                DBAccessor.update_player(_id=player.chat_id, update=update)
+                query = {'$set': {'last_encounter': now}, '$unset': {'encounter': 1}}
+                DBAccessor.update_player(_id=player.chat_id, update=query)
                 logging.info('reset encounter for player ' + str(player.chat_id))
             continue
         chance = pow(1 / (24 * 60 * 60) * (now - last_enc), math.e)
@@ -66,14 +66,13 @@ def build_encounter_message(bot):
                                                                  _title=Constants.ENCOUNTER_MSG,
                                                                  _time_sent=now))
                 encounter = Encounter(pokemon_direction=pokemon_direction, pokemon=pokemon)
-                update = DBAccessor.get_update_query(last_encounter=now, encounter=encounter,
-                                                     messages_to_delete=player.messages_to_delete)
+                query = {'$set': {'last_encounter': now,
+                                  'messages_to_delete': [i.serialize_msg() for i in player.messages_to_delete],
+                                  'encounter': encounter.serialize()}}
             except telegram.error.Unauthorized as e:
-                update = DBAccessor.get_update_query(last_encounter=now,
-                                                     encounter=None,
-                                                     encounters=False)
+                query = {'$set': {'last_encounter': now, 'encounters': False}, '$unset': {'encounter': 1}}
                 logging.error(e)
-            DBAccessor.update_player(_id=player.chat_id, update=update)
+            DBAccessor.update_player(_id=player.chat_id, update=query)
 
 
 def catch(bot, chat_id, option):

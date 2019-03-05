@@ -7,7 +7,7 @@ import Constants
 import DBAccessor
 from Entities import Message, Pokemon
 from Entities.Trade import Trade
-from MessageBuilders import PokeDisplayBuilder, BagMessageBuilder, MessageHelper
+from MessageBuilders import PokeDisplayBuilder, BagMessageBuilder, MessageHelper, MenuMessageBuilder
 
 
 def build_msg_trade(bot, chat_id, player_id=None):
@@ -37,11 +37,11 @@ def build_msg_trade(bot, chat_id, player_id=None):
                                       reply_markup=reply_keyboard)
         friend.messages_to_delete.append(
             Message.Message(_id=invite_msg.message_id, _title=Constants.TRADE_INVITE_MSG, _time_sent=time.time()))
-        query_friend = DBAccessor.get_update_query(chat_id=friend.chat_id, messages_to_delete=friend.messages_to_delete)
+        query_friend = DBAccessor.get_update_query(messages_to_delete=friend.messages_to_delete)
         DBAccessor.update_player(_id=friend.chat_id, update=query_friend)
 
         player.trade = Trade(partner_id=friend.chat_id)
-        query_player = DBAccessor.get_update_query(chat_id=player.chat_id, trade=player.trade)
+        query_player = DBAccessor.get_update_query(trade=player.trade)
         DBAccessor.update_player(_id=player.chat_id, update=query_player)
 
         msg = bot.send_message(chat_id=chat_id, text='Choose your Pokemon to trade:')
@@ -52,7 +52,7 @@ def trade_invite_confirm(bot, chat_id, init_player_id):
     player = DBAccessor.get_player(chat_id)
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.TRADE_INVITE_MSG)
     player.trade = Trade(partner_id=init_player_id)
-    query_player = DBAccessor.get_update_query(chat_id=player.chat_id, trade=player.trade)
+    query_player = DBAccessor.get_update_query(trade=player.trade)
     DBAccessor.update_player(_id=player.chat_id, update=query_player)
     BagMessageBuilder.build_msg_bag(bot=bot, chat_id=player.chat_id, page_number=0, trade_mode=True)
 
@@ -127,19 +127,19 @@ def build_choose_friend_message(bot, chat_id):
 
 def trade_pokemon_chosen(bot, chat_id, pokemon_id):
     pokemon_id = int(pokemon_id)
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
     player = DBAccessor.get_player(_id=chat_id)
+    MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.POKE_DISPLAY_MSG)
     if player.trade is not None:
         player.trade.pokemon = player.remove_pokemon(pokemon_id)
     else:
-        bot.send_message(chat_id=chat_id, text='Your trade exceeded.')
+        bot.send_message(chat_id=player.chat_id, text='Your trade exceeded.')
         return
     if player.trade.pokemon is None:
-        bot.send_message(chat_id=chat_id, text='Pokemon not found, im getting old :/')
+        bot.send_message(chat_id=player.chat_id, text='Pokemon not found, im getting old :/')
         return
-    query = DBAccessor.get_update_query(chat_id=chat_id, pokemon=player.pokemon, trade=player.trade)
-    DBAccessor.update_player(_id=chat_id, update=query)
-    bot.send_message(chat_id=chat_id, text='You chose {} for this trade'.format(player.trade.pokemon.name))
+    query = DBAccessor.get_update_query(pokemon=player.pokemon, trade=player.trade)
+    DBAccessor.update_player(_id=player.chat_id, update=query)
+    bot.send_message(chat_id=player.chat_id, text='You chose {} for this trade'.format(player.trade.pokemon.name))
     partner = DBAccessor.get_player(int(player.trade.partner_id))
 
     if partner.trade is not None:
@@ -167,7 +167,7 @@ def trade_pokemon_chosen(bot, chat_id, pokemon_id):
                                  photo=bio_partner, reply_markup=reply_markup)
             return
 
-    bot.send_message(chat_id=chat_id,
+    bot.send_message(chat_id=player.chat_id,
                      text='{} has not chosen yet. I will notify you when he/she is ready.'.format(partner.username))
     bot.send_message(chat_id=partner.chat_id,
                      text='Your trading partner has chosen {} to trade.'.format(player.trade.pokemon.name))
@@ -194,13 +194,12 @@ def trade_accept(bot, chat_id):
 
             player.pokemon.append(partner.trade.pokemon)
             partner.pokemon.append(player.trade.pokemon)
-
             player.trade, partner.trade = None, None
-            query_player = DBAccessor.get_update_query(chat_id=player.chat_id, trade=player.trade,
-                                                       pokemon=player.pokemon)
-            query_partner = DBAccessor.get_update_query(chat_id=partner.chat_id, trade=partner.trade,
-                                                        pokemon=partner.pokemon)
 
+            query_player = {'$set': {'pokemon': [i.serialize_pokemon() for i in player.pokemon]},
+                            '$unset': {'trade': 1}}
+            query_partner = {'$set': {'pokemon': [i.serialize_pokemon() for i in partner.pokemon]},
+                             '$unset': {'trade': 1}}
             DBAccessor.update_player(_id=player.chat_id, update=query_player)
             DBAccessor.update_player(_id=partner.chat_id, update=query_partner)
 
@@ -208,11 +207,9 @@ def trade_accept(bot, chat_id):
                                                   poke_id=player.pokemon[-1]._id)
             PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=partner.chat_id, trade_mode=False, page_num=0,
                                                   poke_id=partner.pokemon[-1]._id)
-
-
         else:
             player.trade.accepted = True
-            query_player = DBAccessor.get_update_query(chat_id=player.chat_id, trade=player.trade)
+            query_player = DBAccessor.get_update_query(trade=player.trade)
             DBAccessor.update_player(_id=player.chat_id, update=query_player)
             bot.send_message(chat_id=chat_id,
                              text='You accepted the trade. Awaiting {}\'s response'.format(partner.username))
@@ -225,11 +222,13 @@ def trade_abort(bot, chat_id):
     player = DBAccessor.get_player(_id=chat_id)
     if player.trade is not None:
         partner = DBAccessor.get_player(player.trade.partner_id)
+        menu_msg_id = player.get_messages(Constants.MENU_MSG)[-1]._id
+        MenuMessageBuilder.update_menu_message(bot, chat_id, menu_msg_id)
         bot.send_message(chat_id=partner.chat_id, text='{} has aborted the trade.'.format(player.username))
-        bot.send_message(chat_id=partner.chat_id, text='The trade will be aborted.')
+        bot.send_message(chat_id=player.chat_id, text='The trade will be aborted.')
         partner.trade, player.trade = None, None
-        query_player = DBAccessor.get_update_query(chat_id=player.chat_id, trade=player.trade)
-        query_partner = DBAccessor.get_update_query(chat_id=partner.chat_id, trade=partner.trade)
+        query_player = {'$unset': {'trade': 1}}
+        query_partner = {'$unset': {'trade': 1}}
         DBAccessor.update_player(_id=player.chat_id, update=query_player)
         DBAccessor.update_player(_id=partner.chat_id, update=query_partner)
     else:

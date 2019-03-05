@@ -75,7 +75,7 @@ def poke_edit_name(bot, chat_id, pokemon_id):
     if pokemon is None:
         bot.send_message(chat_id=chat_id, text='An error occurred! Couldn\'t find requested pokemon!')
         return
-    query = DBAccessor.get_update_query(chat_id=chat_id, nc_msg_state=Constants.NC_MSG_States.DISPLAY_EDIT_NAME,
+    query = DBAccessor.get_update_query(nc_msg_state=Constants.NC_MSG_States.DISPLAY_EDIT_NAME,
                                         edit_pokemon_id=pokemon_id)
     DBAccessor.update_player(_id=chat_id, update=query)
     bot.send_message(chat_id=chat_id, text='Send me the new name of ' + str(pokemon.name))
@@ -87,7 +87,7 @@ def poke_change_name(bot, chat_id, new_name):
     pokemon.name = new_name
     player.update_pokemon(pokemon=pokemon)
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
-    query = DBAccessor.get_update_query(chat_id=chat_id, pokemon=player.pokemon, edit_pokemon_id=None)
+    query = DBAccessor.get_update_query(pokemon=player.pokemon, edit_pokemon_id=None)
     DBAccessor.update_player(_id=chat_id, update=query)
     build_poke_display(bot=bot, chat_id=chat_id, trade_mode=False, page_num=0, poke_id=pokemon._id)
 
@@ -100,6 +100,6 @@ def poke_edit_team(bot, chat_id, poke_id):
     else:
         new_team_pokemon = player.remove_pokemon(pokemon_id=poke_id)
         player.pokemon_team.append(new_team_pokemon)
-        query = DBAccessor.get_update_query(chat_id=chat_id, pokemon=player.pokemon, pokemon_team=player.pokemon_team)
+        query = DBAccessor.get_update_query(pokemon=player.pokemon, pokemon_team=player.pokemon_team)
         DBAccessor.update_player(_id=chat_id, update=query)
         bot.send_message(chat_id=chat_id, text='Added ' + str(new_team_pokemon.name) + ' to your team!')
