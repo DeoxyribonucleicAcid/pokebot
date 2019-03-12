@@ -1,5 +1,5 @@
 from MessageBuilders import TradeMessageBuilder, BagMessageBuilder, PokeDisplayBuilder, \
-    FriendlistMessageBuilder, EncounterMessageBuilder, MenuMessageBuilder, ItemBagMessageBuilder
+    FriendlistMessageBuilder, EncounterMessageBuilder, MenuMessageBuilder, ItemBagMessageBuilder, DuelMessageBuilder
 
 
 class CALLBACK_HANDLER:
@@ -18,7 +18,7 @@ class CALLBACK_HANDLER:
             'display': {
                 'edit': {
                     'name': PokeDisplayBuilder.poke_edit_name,
-                    'team': None
+                    'team': PokeDisplayBuilder.poke_edit_team
                 },
                 'view': PokeDisplayBuilder.build_poke_display
             }
@@ -38,10 +38,28 @@ class CALLBACK_HANDLER:
             'abort': TradeMessageBuilder.trade_abort,
             'accept': TradeMessageBuilder.trade_accept
         },
+        'duel': {
+            'start': {
+                'friend': DuelMessageBuilder.build_msg_duel_start_friend,
+                'nofriend': DuelMessageBuilder.build_msg_duel_start_nofriend,
+            },
+            'invite': {
+                'accept': DuelMessageBuilder.build_msg_duel_invite_accept,
+                'deny': DuelMessageBuilder.build_msg_duel_invite_deny,
+            },
+            'action': {
+                'chosen': DuelMessageBuilder.build_msg_duel_action_chosen,
+                'pokemon': DuelMessageBuilder.build_msg_duel_action_pokemon,
+                'attack': DuelMessageBuilder.build_msg_duel_action_attack,
+                'item': DuelMessageBuilder.build_msg_duel_action_item,
+            },
+            'active': DuelMessageBuilder.build_msg_duel_active,
+            'abort': DuelMessageBuilder.abort_duel,
+        },
         'friend': {
             'name': None,
             'trade': TradeMessageBuilder.build_msg_trade,
-            'duel': None,
+            'duel': DuelMessageBuilder.build_msg_duel_start_friend,
             'delete': FriendlistMessageBuilder.delete_friend,
 
             'conf_delete': {

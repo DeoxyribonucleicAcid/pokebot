@@ -75,5 +75,7 @@ def db_setup():
         raise EnvironmentError('Collection does not exist!')
 
     player_collection = db["player"]
+    duel_collection = db["duel"]
     EichState.db = db
     EichState.player_col = player_collection
+    EichState.duel_col = duel_collection

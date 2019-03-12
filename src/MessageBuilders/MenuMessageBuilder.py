@@ -26,7 +26,7 @@ def send_menu_message(bot, update):
     else:
         player.messages_to_delete.append(
             Message.Message(msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time()))
-        query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+        query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
         DBAccessor.update_player(_id=player.chat_id, update=query)
 
 

@@ -68,5 +68,5 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
                                text='Your bag is empty, catch some pokemon!')
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.BAG_MSG, _time_sent=time.time()))
-    update = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+    update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=update)

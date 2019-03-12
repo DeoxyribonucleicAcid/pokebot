@@ -70,7 +70,8 @@ def adjust_encounter_chance(bot, chat_id, chance):
             time_elapsed = float((86400 ** math.e * chance)) ** float((1 / math.e))
             now = time.time()
             adjusted_time = now - time_elapsed
-            DBAccessor.update_player(_id=chat_id, update=DBAccessor.get_update_query(last_encounter=adjusted_time))
+            DBAccessor.update_player(_id=chat_id,
+                                     update=DBAccessor.get_update_query_player(last_encounter=adjusted_time))
             # sqrt(86400^e * 0.2, e)
             chance = pow(1 / (24 * 60 * 60) * (now - adjusted_time), math.e)
             msg = bot.send_message(chat_id=chat_id,

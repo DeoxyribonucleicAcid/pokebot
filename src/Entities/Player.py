@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 class Player:
     def __init__(self, chat_id, username: str = None, friendlist=None, items=None, pokemon=None, pokemon_team=None,
                  last_encounter=None, edit_pokemon_id=None, nc_msg_state=None, encounters=False,
-                 messages_to_delete=None, encounter=None, trade=None):
+                 messages_to_delete=None, encounter=None, trade=None, duels=None):
         self.chat_id: int = chat_id
-        self.username = username.lower()
+        self.username = username.lower() if username is not None else None
         self.friendlist: List[int] = [] if friendlist is None else friendlist
         self.items = {} if items is None else items
         self.pokemon: List[Pokemon.Pokemon] = [] if pokemon is None else pokemon
@@ -28,6 +28,8 @@ class Player:
         self.last_encounter: float = time.time() if last_encounter is None else last_encounter
         self.encounter: Encounter = encounter
         self.trade: Trade = trade
+
+        self.duels: List[int] = [] if duels is None else duels
 
     def get_messages(self, identifier: str):
         return [i for i in self.messages_to_delete if i._title == identifier]
@@ -73,8 +75,9 @@ class Player:
                   'edit_pokemon_id': self.edit_pokemon_id,
                   'encounters': self.encounters,
                   'messages_to_delete': [i.serialize_msg() for i in self.messages_to_delete],
-                  'encounter': self.encounter.serialize(),
-                  'trade': self.trade.serialize()}
+                  'encounter': self.encounter.serialize() if self.encounter is not None else None,
+                  'trade': self.trade.serialize() if self.trade is not None else None,
+                  'duels': [i.serialize() for i in self.duels]}
         return serial
 
     @staticmethod
@@ -136,14 +139,19 @@ class Player:
             messages_to_delete = None
             logging.error(e)
         try:
-            encounter = Encounter.deserialize(json['encounter'])
+            encounter = Encounter.deserialize(json['encounter']) if json['encounter'] is not None else None
         except KeyError as e:
             encounter = None
             logging.error(e)
         try:
-            trade = Trade.deserialize(json['trade'])
+            trade = Trade.deserialize(json['trade']) if json['trade'] is not None else None
         except KeyError as e:
             trade = None
+            logging.error(e)
+        try:
+            duels = [i for i in json['duels']]
+        except KeyError as e:
+            duels = None
             logging.error(e)
 
         player = Player(chat_id=chat_id,
@@ -158,5 +166,6 @@ class Player:
                         encounters=encounters,
                         messages_to_delete=messages_to_delete,
                         encounter=encounter,
-                        trade=trade)
+                        trade=trade,
+                        duels=duels)
         return player

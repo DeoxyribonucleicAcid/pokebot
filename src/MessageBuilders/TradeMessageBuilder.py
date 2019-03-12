@@ -12,7 +12,7 @@ from MessageBuilders import PokeDisplayBuilder, BagMessageBuilder, MessageHelper
 
 def build_msg_trade(bot, chat_id, player_id=None):
     if player_id is None:
-        build_choose_friend_message(bot=bot, chat_id=chat_id)
+        MessageHelper.build_choose_friend_message(bot=bot, chat_id=chat_id, mode=Constants.CHOOSE_FRIEND_MODE.TRADE)
         return
     else:
         player = DBAccessor.get_player(chat_id)
@@ -37,11 +37,11 @@ def build_msg_trade(bot, chat_id, player_id=None):
                                       reply_markup=reply_keyboard)
         friend.messages_to_delete.append(
             Message.Message(_id=invite_msg.message_id, _title=Constants.TRADE_INVITE_MSG, _time_sent=time.time()))
-        query_friend = DBAccessor.get_update_query(messages_to_delete=friend.messages_to_delete)
+        query_friend = DBAccessor.get_update_query_player(messages_to_delete=friend.messages_to_delete)
         DBAccessor.update_player(_id=friend.chat_id, update=query_friend)
 
         player.trade = Trade(partner_id=friend.chat_id)
-        query_player = DBAccessor.get_update_query(trade=player.trade)
+        query_player = DBAccessor.get_update_query_player(trade=player.trade)
         DBAccessor.update_player(_id=player.chat_id, update=query_player)
 
         msg = bot.send_message(chat_id=chat_id, text='Choose your Pokemon to trade:')
@@ -52,7 +52,7 @@ def trade_invite_confirm(bot, chat_id, init_player_id):
     player = DBAccessor.get_player(chat_id)
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.TRADE_INVITE_MSG)
     player.trade = Trade(partner_id=init_player_id)
-    query_player = DBAccessor.get_update_query(trade=player.trade)
+    query_player = DBAccessor.get_update_query_player(trade=player.trade)
     DBAccessor.update_player(_id=player.chat_id, update=query_player)
     BagMessageBuilder.build_msg_bag(bot=bot, chat_id=player.chat_id, page_number=0, trade_mode=True)
 
@@ -60,7 +60,7 @@ def trade_invite_confirm(bot, chat_id, init_player_id):
 def trade_invite_deny(bot, chat_id, init_player_id):
     player = DBAccessor.get_player(chat_id)
     init_player = DBAccessor.get_player(int(init_player_id))
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.TRADE_INVITE_MSG)
+    MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.TRADE_INVITE_MSG)
 
     bot.send_message(chat_id=player.chat_id,
                      text='Trade cancelled')
@@ -91,40 +91,6 @@ def trade_callback_handler(bot, update):
                                               page_num=page_num, trade_mode=True)
 
 
-def build_choose_friend_message(bot, chat_id):
-    player = DBAccessor.get_player(chat_id)
-    if player is None:
-        bot.send_message(chat_id=chat_id,
-                         text='You are not registered.\nType /username or /register to register.')
-        return
-    elif player.friendlist is None or len(player.friendlist) is 0:
-        keys = [[InlineKeyboardButton(text='Add friend',
-                                      callback_data=Constants.CALLBACK.FRIEND_ADD)]]
-        reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
-        bot.send_message(chat_id=chat_id,
-                         text='You con only trade with friends. Sadly, you got no friends :('
-                              ' Add some with their usernames using /addfriend.',
-                         reply_markup=reply_keyboard)
-        return
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.TRADE_FRIENDLIST_MSG)
-    keys = []
-    for friend_id in player.friendlist:
-        friend = DBAccessor.get_player(friend_id)
-        if friend is None:
-            continue
-        else:
-            keys.append([InlineKeyboardButton(text=DBAccessor.get_player(friend_id).username,
-                                              callback_data=Constants.CALLBACK.FRIEND_TRADE(friend_id))], )
-    reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
-    msg = bot.send_message(chat_id=player.chat_id, text='Choose one of your friends to trade with:',
-                           reply_markup=reply_keyboard)
-
-    player.messages_to_delete.append(
-        Message.Message(msg.message_id, _title=Constants.TRADE_FRIENDLIST_MSG, _time_sent=time.time()))
-    query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
-    DBAccessor.update_player(_id=player.chat_id, update=query)
-
-
 def trade_pokemon_chosen(bot, chat_id, pokemon_id):
     pokemon_id = int(pokemon_id)
     player = DBAccessor.get_player(_id=chat_id)
@@ -137,7 +103,7 @@ def trade_pokemon_chosen(bot, chat_id, pokemon_id):
     if player.trade.pokemon is None:
         bot.send_message(chat_id=player.chat_id, text='Pokemon not found, im getting old :/')
         return
-    query = DBAccessor.get_update_query(pokemon=player.pokemon, trade=player.trade)
+    query = DBAccessor.get_update_query_player(pokemon=player.pokemon, trade=player.trade)
     DBAccessor.update_player(_id=player.chat_id, update=query)
     bot.send_message(chat_id=player.chat_id, text='You chose {} for this trade'.format(player.trade.pokemon.name))
     partner = DBAccessor.get_player(int(player.trade.partner_id))
@@ -209,7 +175,7 @@ def trade_accept(bot, chat_id):
                                                   poke_id=partner.pokemon[-1]._id)
         else:
             player.trade.accepted = True
-            query_player = DBAccessor.get_update_query(trade=player.trade)
+            query_player = DBAccessor.get_update_query_player(trade=player.trade)
             DBAccessor.update_player(_id=player.chat_id, update=query_player)
             bot.send_message(chat_id=chat_id,
                              text='You accepted the trade. Awaiting {}\'s response'.format(partner.username))

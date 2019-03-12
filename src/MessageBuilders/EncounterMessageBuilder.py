@@ -79,7 +79,7 @@ def catch(bot, chat_id, option):
     player = DBAccessor.get_player(chat_id)
     option = int(option)
     if option == player.encounter.pokemon_direction:
-        if player.encounter.pokemon._id == player.pokemon[-1]._id:
+        if (len(player.pokemon) > 0) and (player.encounter.pokemon._id == player.pokemon[-1]._id):
             return
         bot.send_message(chat_id=player.chat_id, text='captured ' + player.encounter.pokemon.name + '!')
         for i in player.get_messages(Constants.ENCOUNTER_MSG):
@@ -89,5 +89,5 @@ def catch(bot, chat_id, option):
                 logging.error(e)
         # Reset Player's encounter
         player.pokemon.append(player.encounter.pokemon)
-        update = DBAccessor.get_update_query(pokemon=player.pokemon, encounter=None)
+        update = DBAccessor.get_update_query_player(pokemon=player.pokemon, encounter=None)
         DBAccessor.update_player(_id=player.chat_id, update=update)

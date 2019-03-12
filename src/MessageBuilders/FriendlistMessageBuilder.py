@@ -51,7 +51,7 @@ def build_friendlist_message(bot, chat_id):
 
     player.messages_to_delete.append(
         Message.Message(msg.message_id, _title=Constants.FRIENDLIST_MSG, _time_sent=time.time()))
-    query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+    query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=query)
 
 
@@ -68,7 +68,7 @@ def delete_friend(bot, chat_id, friend_to_be_deleted):
     player = DBAccessor.get_player(chat_id)
     player.messages_to_delete.append(
         Message.Message(msg.message_id, _title=Constants.FRIEND_CONFIRM_DELETE_MSG, _time_sent=time.time()))
-    query = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+    query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=query)
 
 
@@ -82,7 +82,7 @@ def delete_friend_confirm(bot, chat_id, friend_to_be_deleted):
             logging.error(e)
     if friend_to_be_deleted in player.friendlist:
         player.friendlist.remove(friend_to_be_deleted)
-        DBAccessor.update_player(player.chat_id, DBAccessor.get_update_query(friendlist=player.friendlist))
+        DBAccessor.update_player(player.chat_id, DBAccessor.get_update_query_player(friendlist=player.friendlist))
         bot.send_message(chat_id=chat_id, text='I wont tell him/her that you dont like him/her anymore.')
     else:
         bot.send_message(chat_id=chat_id, text='I couldn\'t find him/her in your list.')
@@ -138,7 +138,7 @@ def build_add_friend_initial_message(bot, chat_id):
                                                'you :)\nIf you already did so and have not told me yet, use /username')
         return None
     else:
-        query = DBAccessor.get_update_query(nc_msg_state=Constants.NC_MSG_States.USERNAME)
+        query = DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.USERNAME)
         DBAccessor.update_player(_id=chat_id, update=query)
         bot.send_message(chat_id=chat_id, text='Send me the username of your friend. Use /exit to stop.')
 
@@ -153,18 +153,18 @@ def search_friend_in_players(bot, update):
     if new_friend is None:
         bot.send_message(chat_id=player.chat_id,
                          text='I dont know him/her. Maybe you should introduce me to him/her :)')
-        query = DBAccessor.get_update_query(nc_msg_state=Constants.NC_MSG_States.INFO)
+        query = DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO)
         DBAccessor.update_player(_id=update.message.chat_id, update=query)
         return None
     elif new_friend.chat_id in player.friendlist:
         bot.send_message(chat_id=player.chat_id, text='You two are already friends')
-        query = DBAccessor.get_update_query(nc_msg_state=Constants.NC_MSG_States.INFO)
+        query = DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO)
         DBAccessor.update_player(_id=update.message.chat_id, update=query)
         return None
     else:
         player.friendlist.append(new_friend.chat_id)
-        query = DBAccessor.get_update_query(friendlist=player.friendlist,
-                                            nc_msg_state=Constants.NC_MSG_States.INFO)
+        query = DBAccessor.get_update_query_player(friendlist=player.friendlist,
+                                                   nc_msg_state=Constants.NC_MSG_States.INFO)
         DBAccessor.update_player(_id=update.message.chat_id, update=query)
         bot.send_message(chat_id=player.chat_id, text='I added and notified him/her.')
         if player.chat_id not in new_friend.friendlist:
@@ -190,7 +190,7 @@ def add_friend_callback(bot, chat_id, username):
         bot.send_message(chat_id=chat_id, text='Something went wrong, I cant find your new friend.')
     else:
         player.friendlist.append(new_friend.chat_id)
-        query = DBAccessor.get_update_query(friendlist=player.friendlist)
+        query = DBAccessor.get_update_query_player(friendlist=player.friendlist)
         DBAccessor.update_player(_id=player.chat_id, update=query)
         bot.send_message(chat_id=chat_id, text='I added him/her.')
 

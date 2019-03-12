@@ -40,7 +40,7 @@ def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
                              reply_markup=reply_keyboard)
         player.messages_to_delete.append(
             Message.Message(_id=msg.message_id, _title=Constants.POKE_DISPLAY_MSG, _time_sent=time.time()))
-        update = DBAccessor.get_update_query(messages_to_delete=player.messages_to_delete)
+        update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
         DBAccessor.update_player(_id=player.chat_id, update=update)
     except ConnectionResetError as e:
         logging.error(e)
@@ -75,8 +75,8 @@ def poke_edit_name(bot, chat_id, pokemon_id):
     if pokemon is None:
         bot.send_message(chat_id=chat_id, text='An error occurred! Couldn\'t find requested pokemon!')
         return
-    query = DBAccessor.get_update_query(nc_msg_state=Constants.NC_MSG_States.DISPLAY_EDIT_NAME,
-                                        edit_pokemon_id=pokemon_id)
+    query = DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.DISPLAY_EDIT_NAME,
+                                               edit_pokemon_id=pokemon_id)
     DBAccessor.update_player(_id=chat_id, update=query)
     bot.send_message(chat_id=chat_id, text='Send me the new name of ' + str(pokemon.name))
 
@@ -87,7 +87,7 @@ def poke_change_name(bot, chat_id, new_name):
     pokemon.name = new_name
     player.update_pokemon(pokemon=pokemon)
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
-    query = DBAccessor.get_update_query(pokemon=player.pokemon, edit_pokemon_id=None)
+    query = DBAccessor.get_update_query_player(pokemon=player.pokemon, edit_pokemon_id=None)
     DBAccessor.update_player(_id=chat_id, update=query)
     build_poke_display(bot=bot, chat_id=chat_id, trade_mode=False, page_num=0, poke_id=pokemon._id)
 
@@ -98,8 +98,8 @@ def poke_edit_team(bot, chat_id, poke_id):
         bot.send_message(chat_id=chat_id,
                          text='Your team is full, remove some first!')
     else:
-        new_team_pokemon = player.remove_pokemon(pokemon_id=poke_id)
+        new_team_pokemon = player.remove_pokemon(pokemon_id=int(poke_id))
         player.pokemon_team.append(new_team_pokemon)
-        query = DBAccessor.get_update_query(pokemon=player.pokemon, pokemon_team=player.pokemon_team)
+        query = DBAccessor.get_update_query_player(pokemon=player.pokemon, pokemon_team=player.pokemon_team)
         DBAccessor.update_player(_id=chat_id, update=query)
         bot.send_message(chat_id=chat_id, text='Added ' + str(new_team_pokemon.name) + ' to your team!')

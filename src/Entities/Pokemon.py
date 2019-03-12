@@ -228,10 +228,9 @@ def build_pokemon_catch_img(pokemon_sprite, direction):
     return background
 
 
-def build_pokemon_bag_image(pokemon_sprite_list):
+def build_pokemon_bag_image(pokemon_sprite_list, max_row_len=4):
     if len(pokemon_sprite_list) is 0:
         return None
-    max_row_len = 4
 
     images = [get_poke_image(i) for i in pokemon_sprite_list]  # map(Image.open, dir_list)
     widths, heights = zip(*(i.size for i in images))
