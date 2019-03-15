@@ -15,17 +15,18 @@ def send_menu_message(bot, update):
     player = DBAccessor.get_player(update.message.chat_id)
     if player is not None:
         MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
-                                              type=Constants.MENU_MSG)
+                                              type=Constants.MESSAGE_TYPES.MENU_MSG)
     text, reply_markup = build_msg_menu(player.encounters if player is not None else False, trade=player.trade)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
     if player is None:
         new_player = Player.Player(update.message.chat_id, messages_to_delete=[
-            Message.Message(_id=msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time())], encounters=False)
+            Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.MENU_MSG, _time_sent=time.time())],
+                                   encounters=False)
         DBAccessor.insert_new_player(new_player)
     else:
         player.messages_to_delete.append(
-            Message.Message(msg.message_id, _title=Constants.MENU_MSG, _time_sent=time.time()))
+            Message.Message(msg.message_id, _title=Constants.MESSAGE_TYPES.MENU_MSG, _time_sent=time.time()))
         query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
         DBAccessor.update_player(_id=player.chat_id, update=query)
 
@@ -35,7 +36,7 @@ def update_menu_message(bot, chat_id, msg_id):
     if player is None:
         return False
     # msg_id = len(player.messages_to_delete) - 1 - next(
-    #     (i for i, x in enumerate(reversed(player.messages_to_delete)) if x._title == Constants.MENU_MSG),
+    #    (i for i, x in enumerate(reversed(player.messages_to_delete)) if x._title == Constants.MESSAGE_TYPES.MENU_MSG),
     #     len(player.messages_to_delete))
     text, reply_markup = build_msg_menu(encounters=player.encounters, trade=player.trade)
     try:
@@ -70,9 +71,9 @@ def build_msg_menu(encounters: bool, trade: Trade):
 
 def toggle_encounter(bot, chat_id):
     player = DBAccessor.get_player(chat_id)
-    menu_msg_id = player.get_messages(Constants.MENU_MSG)[-1]._id
+    menu_msg_id = player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id,
-                                          type=Constants.MENU_INFO_MSG)
+                                          type=Constants.MESSAGE_TYPES.MENU_INFO_MSG)
     if player.encounters:
         ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=chat_id)
     else:

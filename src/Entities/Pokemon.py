@@ -32,7 +32,7 @@ class Pokemon:
         self.female: bool = female
         self.is_shiny: bool = is_shiny
 
-    def serialize_pokemon(self):
+    def serialize(self):
         serial = {
             '_id': self._id,
             'pokedex_id': self.pokedex_id,

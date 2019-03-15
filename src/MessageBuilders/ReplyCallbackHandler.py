@@ -48,7 +48,7 @@ class CALLBACK_HANDLER:
                 'deny': DuelMessageBuilder.build_msg_duel_invite_deny,
             },
             'action': {
-                'chosen': DuelMessageBuilder.build_msg_duel_action_chosen,
+                'chosen': DuelMessageBuilder.build_msg_duel_action_chosen_source,
                 'pokemon': DuelMessageBuilder.build_msg_duel_action_pokemon,
                 'attack': DuelMessageBuilder.build_msg_duel_action_attack,
                 'item': DuelMessageBuilder.build_msg_duel_action_item,

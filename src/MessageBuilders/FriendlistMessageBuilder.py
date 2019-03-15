@@ -25,7 +25,7 @@ def build_friendlist_message(bot, chat_id):
                          text='You got no friends :( Add some with their usernames using /addfriend.',
                          reply_markup=reply_keyboard)
         return
-    for i in player.get_messages(Constants.FRIENDLIST_MSG):
+    for i in player.get_messages(Constants.MESSAGE_TYPES.FRIENDLIST_MSG):
         try:
             bot.delete_message(chat_id=player.chat_id, message_id=i._id)
         except telegram.error.BadRequest as e:
@@ -50,7 +50,7 @@ def build_friendlist_message(bot, chat_id):
     msg = bot.send_message(chat_id=player.chat_id, text='Your friends:', reply_markup=reply_keyboard)
 
     player.messages_to_delete.append(
-        Message.Message(msg.message_id, _title=Constants.FRIENDLIST_MSG, _time_sent=time.time()))
+        Message.Message(msg.message_id, _title=Constants.MESSAGE_TYPES.FRIENDLIST_MSG, _time_sent=time.time()))
     query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=query)
 
@@ -67,7 +67,8 @@ def delete_friend(bot, chat_id, friend_to_be_deleted):
                            reply_markup=reply_keyboard)
     player = DBAccessor.get_player(chat_id)
     player.messages_to_delete.append(
-        Message.Message(msg.message_id, _title=Constants.FRIEND_CONFIRM_DELETE_MSG, _time_sent=time.time()))
+        Message.Message(msg.message_id, _title=Constants.MESSAGE_TYPES.FRIEND_CONFIRM_DELETE_MSG,
+                        _time_sent=time.time()))
     query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=query)
 
@@ -75,7 +76,7 @@ def delete_friend(bot, chat_id, friend_to_be_deleted):
 def delete_friend_confirm(bot, chat_id, friend_to_be_deleted):
     friend_to_be_deleted = int(friend_to_be_deleted)
     player = DBAccessor.get_player(chat_id)
-    for i in player.get_messages(Constants.FRIEND_CONFIRM_DELETE_MSG):
+    for i in player.get_messages(Constants.MESSAGE_TYPES.FRIEND_CONFIRM_DELETE_MSG):
         try:
             bot.delete_message(chat_id=player.chat_id, message_id=i._id)
         except telegram.error.BadRequest as e:
@@ -90,7 +91,7 @@ def delete_friend_confirm(bot, chat_id, friend_to_be_deleted):
 
 def delete_friend_deny(bot, chat_id):
     player = DBAccessor.get_player(chat_id)
-    for i in player.get_messages(Constants.FRIEND_CONFIRM_DELETE_MSG):
+    for i in player.get_messages(Constants.MESSAGE_TYPES.FRIEND_CONFIRM_DELETE_MSG):
         try:
             bot.delete_message(chat_id=player.chat_id, message_id=i._id)
         except telegram.error.BadRequest as e:
@@ -105,7 +106,7 @@ def friend_callback_handler(bot, update):
     elif data.startswith('friend-trade-'):
         friend_id = int(data[13:])
         player = DBAccessor.get_player(update.effective_message.chat_id)
-        for i in player.get_messages(Constants.TRADE_FRIENDLIST_MSG):
+        for i in player.get_messages(Constants.MESSAGE_TYPES.TRADE_FRIENDLIST_MSG):
             try:
                 bot.delete_message(chat_id=player.chat_id, message_id=i._id)
             except telegram.error.BadRequest as e:

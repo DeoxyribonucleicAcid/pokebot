@@ -1,22 +1,23 @@
 # MESSAGE IDENTIFIERS
 from enum import Enum
 
-# Message Types
-ENCOUNTER_MSG = 'encounter_msg'
-MENU_MSG = 'menu_msg'
-BAG_MSG = 'bag_msg'
-MENU_INFO_MSG = 'menu_info_msg'
-FRIENDLIST_MSG = 'friendlist_msg'
-FRIEND_CONFIRM_DELETE_MSG = 'conf_del_friend_msg'
-TRADE_FRIENDLIST_MSG = 'trade_firendlist_msg'
-TRADE_CHOOSE_MSG = 'trade_choose_msg'
-TRADE_CONFIRM_MSG = 'trade_confirm_msg'
-TRADE_INVITE_MSG = 'trade_confirm_msg'
-POKE_DISPLAY_MSG = 'poke_display_msg'
-DUEL_FRIENDLIST_MSG = 'duel_friendlist_msg'
-DUEL_STATUS_MSG = 'duel_status_msg'
-DUEL_INVITE_MSG = 'duel_invite_msg'
-DUEL_CHOOSE_MSG = 'duel_choose_msg'
+
+class MESSAGE_TYPES:
+    ENCOUNTER_MSG = 'encounter_msg'
+    MENU_MSG = 'menu_msg'
+    BAG_MSG = 'bag_msg'
+    MENU_INFO_MSG = 'menu_info_msg'
+    FRIENDLIST_MSG = 'friendlist_msg'
+    FRIEND_CONFIRM_DELETE_MSG = 'conf_del_friend_msg'
+    TRADE_FRIENDLIST_MSG = 'trade_firendlist_msg'
+    TRADE_CHOOSE_MSG = 'trade_choose_msg'
+    TRADE_CONFIRM_MSG = 'trade_confirm_msg'
+    TRADE_INVITE_MSG = 'trade_confirm_msg'
+    POKE_DISPLAY_MSG = 'poke_display_msg'
+    DUEL_FRIENDLIST_MSG = 'duel_friendlist_msg'
+    DUEL_STATUS_MSG = 'duel_status_msg'
+    DUEL_INVITE_MSG = 'duel_invite_msg'
+    DUEL_CHOOSE_MSG = 'duel_choose_msg'
 
 
 class NC_MSG_States(Enum):
@@ -33,6 +34,12 @@ class CHOOSE_FRIEND_MODE(Enum):
 class INITIATIVE_LEVEL(Enum):
     CHOOSE_POKE = 0
     USE_ITEM = 1
+
+
+class ACTION_TYPES:
+    ATTACK = 'ActionAttack'
+    EXCHANGEPOKE = 'ActionExchangePoke'
+    USEITEM = 'ActionUseItem'
 
 
 class CALLBACK:

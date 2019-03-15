@@ -51,7 +51,7 @@ def update_player(_id: int, update: dict):
 
 
 def update_duel(_id: int, update: dict):
-    query = {"_id": _id}
+    query = {"event_id": _id}
     EichState.EichState.duel_col.update_one(query, update)
 
 
@@ -98,8 +98,8 @@ def get_update_query_player(chat_id=None, username=None, friendlist=None, items=
     if username is not None: query['$set']['username'] = username
     if friendlist is not None: query['$set']['friendlist'] = [i for i in friendlist]
     if items is not None: query['$set']['items'] = items
-    if pokemon is not None: query['$set']['pokemon'] = [i.serialize_pokemon() for i in pokemon]
-    if pokemon_team is not None: query['$set']['pokemon_team'] = [i.serialize_pokemon() for i in pokemon_team]
+    if pokemon is not None: query['$set']['pokemon'] = [i.serialize() for i in pokemon]
+    if pokemon_team is not None: query['$set']['pokemon_team'] = [i.serialize() for i in pokemon_team]
     if last_encounter is not None: query['$set']['last_encounter'] = last_encounter
     if nc_msg_state is not None: query['$set']['nc_msg_state'] = nc_msg_state.value
     if edit_pokemon_id is not None: query['$set']['edit_pokemon_id'] = edit_pokemon_id
@@ -119,7 +119,7 @@ def get_update_query_player(chat_id=None, username=None, friendlist=None, items=
 
 
 def get_update_query_duel(participant_1: Duel.Participant = None, participant_2: Duel.Participant = None):
-    query = {'$set': {}, '$unset': {}}
+    query = {'$set': {}}
     if participant_1 is not None: query['$set']['participant_1'] = participant_1.serialize()
     if participant_2 is not None: query['$set']['participant_2'] = participant_2.serialize()
     return query

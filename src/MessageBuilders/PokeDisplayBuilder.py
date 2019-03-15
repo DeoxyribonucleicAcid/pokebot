@@ -17,8 +17,8 @@ def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
     player = DBAccessor.get_player(chat_id)
     pokemon = player.get_pokemon(int(poke_id))
     # Delete msgs
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.BAG_MSG)
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.BAG_MSG)
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)
 
     text = 'Pokedex ID: ' + str(pokemon.pokedex_id) + '\n' + \
            'Name: ' + str(pokemon.name) + '\n' + \
@@ -39,7 +39,8 @@ def build_poke_display(bot, chat_id, trade_mode, page_num, poke_id):
                              parse_mode=ParseMode.MARKDOWN,
                              reply_markup=reply_keyboard)
         player.messages_to_delete.append(
-            Message.Message(_id=msg.message_id, _title=Constants.POKE_DISPLAY_MSG, _time_sent=time.time()))
+            Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG,
+                            _time_sent=time.time()))
         update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
         DBAccessor.update_player(_id=player.chat_id, update=update)
     except ConnectionResetError as e:
@@ -86,7 +87,7 @@ def poke_change_name(bot, chat_id, new_name):
     pokemon = player.get_pokemon(int(player.edit_pokemon_id))
     pokemon.name = new_name
     player.update_pokemon(pokemon=pokemon)
-    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.POKE_DISPLAY_MSG)
+    MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)
     query = DBAccessor.get_update_query_player(pokemon=player.pokemon, edit_pokemon_id=None)
     DBAccessor.update_player(_id=chat_id, update=query)
     build_poke_display(bot=bot, chat_id=chat_id, trade_mode=False, page_num=0, poke_id=pokemon._id)

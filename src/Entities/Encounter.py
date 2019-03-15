@@ -15,7 +15,7 @@ class Encounter:
     def serialize(self):
         serial = {'encounter_id': self.encounter_id,
                   'pokemon_direction': self.pokemon_direction,
-                  'pokemon': self.pokemon.serialize_pokemon() if self.pokemon is not None else None}
+                  'pokemon': self.pokemon.serialize() if self.pokemon is not None else None}
         return serial
 
     @staticmethod

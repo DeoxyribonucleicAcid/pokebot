@@ -14,7 +14,7 @@ class Trade:
 
     def serialize(self):
         serial = {'trade_id': self.trade_id,
-                  'pokemon': self.pokemon.serialize_pokemon() if self.pokemon is not None else None,
+                  'pokemon': self.pokemon.serialize() if self.pokemon is not None else None,
                   'partner_id': self.partner_id,
                   'accepted': self.accepted}
         return serial

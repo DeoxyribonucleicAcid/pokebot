@@ -39,8 +39,8 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
                      ])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
-    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.POKE_DISPLAY_MSG)
-    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.BAG_MSG)
+    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)
+    MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.BAG_MSG)
     if image is not None:
         bio = BytesIO()
         bio.name = 'image_bag_' + str(chat_id) + '.png'
@@ -67,6 +67,6 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
         msg = bot.send_message(chat_id=chat_id,
                                text='Your bag is empty, catch some pokemon!')
     player.messages_to_delete.append(
-        Message.Message(_id=msg.message_id, _title=Constants.BAG_MSG, _time_sent=time.time()))
+        Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.BAG_MSG, _time_sent=time.time()))
     update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=update)

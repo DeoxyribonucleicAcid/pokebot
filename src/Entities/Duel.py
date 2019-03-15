@@ -7,24 +7,32 @@ from Entities.EventType import EventType
 
 
 class DuelAction:
-    def __init__(self, source=None, initiative=None, target=None):
+    def __init__(self, source=None, initiative=None, target=None, completed: bool = None):
         self.source = source
         self.initiative = initiative
         self.target = target
+        self.completed: bool = completed
 
-    def set_source(self, player_id: int, source_id, initiative):
+    def set_source(self, bot, player_id: int, source_id, initiative):
         raise NotImplementedError
 
-    def perform(self, target):
+    def perform(self, bot, target_id):
         raise NotImplementedError
 
     def serialize(self):
-        return {'source': self.source,
-                'initiative': self.initiative,
-                'target': self.target}
+        return {'action_type': None,
+                'source': self.source,
+                'initiative': self.initiative.value if self.initiative is not None else None,
+                'target': self.target,
+                'completed': self.completed}
 
     @staticmethod
     def deserialize(json):
+        try:
+            action_type = json['action_type']
+        except KeyError as e:
+            action_type = None
+            logging.error(e)
         try:
             source = json['source']
         except KeyError as e:
@@ -40,35 +48,70 @@ class DuelAction:
         except KeyError as e:
             target = None
             logging.error(e)
-        return DuelAction(source=source, initiative=initiative, target=target)
+        try:
+            completed = json['completed']
+        except KeyError as e:
+            completed = None
+            logging.error(e)
+        if action_type == Constants.ACTION_TYPES.EXCHANGEPOKE:
+            return ActionExchangePoke(source=source, initiative=initiative, target=target, completed=completed)
+        elif action_type == Constants.ACTION_TYPES.ATTACK:
+            return ActionAttack(source=source, initiative=initiative, target=target, completed=completed)
+        elif action_type == Constants.ACTION_TYPES.USEITEM:
+            return ActionUseItem(source=source, initiative=initiative, target=target, completed=completed)
 
 
 class ActionAttack(DuelAction):
-    def set_source(self, player_id: int, attack_id, initiative):
-        raise NotImplementedError
+    def set_source(self, bot, player_id: int, attack_id, initiative):
+        raise NotImplementedError  # TODO
 
-    def perform(self, target):
-        raise NotImplementedError
+    def perform(self, bot, target_id):
+        raise NotImplementedError  # TODO
+
+    def serialize(self):
+        return {'action_type': Constants.ACTION_TYPES.ATTACK,
+                'source': self.source,
+                'initiative': self.initiative.value if self.initiative is not None else None,
+                'target': self.target,
+                'completed': self.completed}
 
 
 class ActionExchangePoke(DuelAction):
-    def set_source(self, player_id: int, pokemon_id, initiative):
+    def set_source(self, bot, player_id: int, pokemon_id, initiative=None):
+        pokemon_id = int(pokemon_id)
         player = DBAccessor.get_player(player_id)
         champion = next((x for x in player.pokemon_team if x._id == pokemon_id), None)
         if champion is not None:
-            self.source = champion
+            self.source = champion._id
             self.initiative = Constants.INITIATIVE_LEVEL.CHOOSE_POKE
+            self.completed = True
+            bot.send_message(chat_id=player.chat_id,
+                             text='You nominated {} as your champion!'.format(champion.name))
 
-    def perform(self, target):
+    def perform(self, bot, target_id):
         raise NotImplementedError
+
+    def serialize(self):
+        return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,
+                'source': self.source,
+                'initiative': self.initiative.value if self.initiative is not None else None,
+                'target': self.target,
+                'completed': self.completed}
 
 
 class ActionUseItem(DuelAction):
-    def set_source(self, player_id: int, item_id, initiative):
-        raise NotImplementedError
+    def set_source(self, bot, player_id: int, item_id, initiative):
+        raise NotImplementedError  # TODO
 
-    def perform(self, target):
-        raise NotImplementedError
+    def perform(self, bot, target_id):
+        raise NotImplementedError  # TODO
+
+    def serialize(self):
+        return {'action_type': Constants.ACTION_TYPES.USEITEM,
+                'source': self.source,
+                'initiative': self.initiative.value if self.initiative is not None else None,
+                'target': self.target,
+                'completed': self.completed}
 
 
 class Participant:
@@ -79,8 +122,8 @@ class Participant:
 
     def serialize(self):
         return {'player_id': self.player_id,
-                'action': self.action.serialize(),
-                'pokemon': self.pokemon}
+                'action': self.action.serialize() if self.action is not None else None,
+                'pokemon': self.pokemon.serialize() if self.pokemon is not None else None}
 
     @staticmethod
     def deserialize(json):
@@ -184,3 +227,9 @@ class Duel(EventType):
                                                      self.participant_1.pokemon.sprites['front'])
         else:
             return None
+
+    def get_participant_by_id(self, participant_id: int):
+        return self.participant_1 if participant_id == self.participant_1.player_id else self.participant_2
+
+    def get_counterpart_by_id(self, participant_id: int):
+        return self.participant_1 if participant_id != self.participant_1.player_id else self.participant_2

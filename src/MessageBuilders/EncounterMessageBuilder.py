@@ -25,7 +25,7 @@ def build_encounter_message(bot):
         if player.encounter is not None:
             if now - last_enc >= 900:
                 # Reset player's catch state
-                for i in player.get_messages(Constants.ENCOUNTER_MSG):
+                for i in player.get_messages(Constants.MESSAGE_TYPES.ENCOUNTER_MSG):
                     try:
                         bot.delete_message(chat_id=player.chat_id, message_id=i._id)
                     except telegram.error.BadRequest as e:
@@ -58,12 +58,13 @@ def build_encounter_message(bot):
             image.save(bio, 'PNG')
             bio.seek(0)
             try:
-                MessageHelper.delete_messages_by_type(bot, chat_id=player.chat_id, type=Constants.ENCOUNTER_MSG)
+                MessageHelper.delete_messages_by_type(bot, chat_id=player.chat_id,
+                                                      type=Constants.MESSAGE_TYPES.ENCOUNTER_MSG)
                 msg = bot.send_photo(chat_id=player.chat_id, text='catch Pokemon!',
                                      photo=bio,
                                      reply_markup=reply_markup)
                 player.messages_to_delete.append(Message.Message(_id=msg.message_id,
-                                                                 _title=Constants.ENCOUNTER_MSG,
+                                                                 _title=Constants.MESSAGE_TYPES.ENCOUNTER_MSG,
                                                                  _time_sent=now))
                 encounter = Encounter(pokemon_direction=pokemon_direction, pokemon=pokemon)
                 query = {'$set': {'last_encounter': now,
@@ -82,7 +83,7 @@ def catch(bot, chat_id, option):
         if (len(player.pokemon) > 0) and (player.encounter.pokemon._id == player.pokemon[-1]._id):
             return
         bot.send_message(chat_id=player.chat_id, text='captured ' + player.encounter.pokemon.name + '!')
-        for i in player.get_messages(Constants.ENCOUNTER_MSG):
+        for i in player.get_messages(Constants.MESSAGE_TYPES.ENCOUNTER_MSG):
             try:
                 bot.delete_message(chat_id=player.chat_id, message_id=i._id)
             except telegram.error.BadRequest as e:

@@ -11,23 +11,8 @@ from Entities import Message
 
 def delete_messages_by_type(bot, chat_id, type):
     player = DBAccessor.get_player(chat_id)
-    if not (type is
-            Constants.ENCOUNTER_MSG or
-            Constants.MENU_MSG or
-            Constants.BAG_MSG or
-            Constants.MENU_INFO_MSG or
-            Constants.FRIENDLIST_MSG or
-            Constants.FRIEND_CONFIRM_DELETE_MSG or
-            Constants.TRADE_FRIENDLIST_MSG or
-            Constants.TRADE_CHOOSE_MSG or
-            Constants.TRADE_CONFIRM_MSG or
-            Constants.TRADE_INVITE_MSG or
-            Constants.POKE_DISPLAY_MSG or
-            Constants.DUEL_FRIENDLIST_MSG or
-            Constants.DUEL_STATUS_MSG or
-            Constants.DUEL_INVITE_MSG or
-            Constants.DUEL_CHOOSE_MSG
-    ):
+    if not (type in [getattr(Constants.MESSAGE_TYPES, attr) for attr in dir(Constants.MESSAGE_TYPES) if
+                     not callable(getattr(Constants.MESSAGE_TYPES, attr)) and not attr.startswith("__")]):
         return False
     else:
         for i in player.get_messages(type):
@@ -43,18 +28,20 @@ def delete_messages_by_type(bot, chat_id, type):
 def reset_states(bot, update):
     DBAccessor.update_player(_id=update.message.chat_id,
                              update=DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO))
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='States have been reset')
 
 
 def build_choose_friend_message(bot, chat_id, mode: Constants.CHOOSE_FRIEND_MODE):
     player = DBAccessor.get_player(chat_id)
     text_no_friends_base = 'Sadly, you got no friends :( Add some with their usernames using /addfriend.'
     if mode is Constants.CHOOSE_FRIEND_MODE.TRADE:
-        type = Constants.TRADE_FRIENDLIST_MSG
+        type = Constants.MESSAGE_TYPES.TRADE_FRIENDLIST_MSG
         text_no_friends = 'You con only trade with friends.' + text_no_friends_base
         callback_build_function = Constants.CALLBACK.FRIEND_TRADE
         text_heading = 'Choose one of your friends to trade with:'
     elif mode is Constants.CHOOSE_FRIEND_MODE.DUEL:
-        type = Constants.DUEL_FRIENDLIST_MSG
+        type = Constants.MESSAGE_TYPES.DUEL_FRIENDLIST_MSG
         text_no_friends = 'You con only challenge your friends.' + text_no_friends_base
         callback_build_function = Constants.CALLBACK.FRIEND_DUEL
         text_heading = 'Challenge one of your friends:'
