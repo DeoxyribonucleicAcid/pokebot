@@ -74,12 +74,22 @@ def get_duel_by_id(event_id: int):
 
 
 def get_duel_by_participants(participant1_id: int, participant2_id: int = None):
-    query = {'$or': [{'participant1': participant1_id},
-                     {'participant2': participant1_id}]}
+    participant1_id, participant2_id = int(participant1_id), int(participant2_id)
+
+    #   {'$or': [{'$and': [{'participant_1.player_id': 252269446}, {'participant_2.player_id': 111146123}]},
+    #   {'$and': [{'participant_2.player_id': 252269446}, {'participant_1.player_id': 111146123}]}]}
+
+    # query = {'$or': [{'$and': [{'participant_1.player_id': 252269446},
+    #                      {'participant_2.player_id': 111146123}]},
+    #            {'$and': [{'participant_2.player_id': 252269446},
+    #                  {'participant_1.player_id': 111146123}]}]}
+
+    query = {'$or': [{'$and': [{'participant_1.player_id': participant1_id}]},
+                     {'$and': [{'participant_2.player_id': participant1_id}]}]}
     if participant2_id is not None:
-        query['$or'][0]['participant2'] = participant2_id
-        query['$or'][1]['participant1'] = participant2_id
-    result = EichState.EichState.player_col.find(query)
+        query['$or'][0]['$and'].append({'participant_2.player_id': participant2_id})
+        query['$or'][1]['$and'].append({'participant_1.player_id': participant2_id})
+    result = EichState.EichState.duel_col.find(query)
     if result.count() is 1:
         return Duel.Duel.deserialize(result.next())
     else:

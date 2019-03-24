@@ -7,6 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import Constants
 import DBAccessor
 from Entities import Message
+from MessageBuilders import DuelMessageBuilder
 
 
 def delete_messages_by_type(bot, chat_id, type):
@@ -25,11 +26,10 @@ def delete_messages_by_type(bot, chat_id, type):
         DBAccessor.update_player(_id=player.chat_id, update=update)
 
 
-def reset_states(bot, update):
-    DBAccessor.update_player(_id=update.message.chat_id,
+def reset_states(bot, chat_id: int):
+    DBAccessor.update_player(_id=chat_id,
                              update=DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO))
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='States have been reset')
+    bot.send_message(chat_id=chat_id, text='States have been reset')
 
 
 def build_choose_friend_message(bot, chat_id, mode: Constants.CHOOSE_FRIEND_MODE):
@@ -79,3 +79,10 @@ def build_choose_friend_message(bot, chat_id, mode: Constants.CHOOSE_FRIEND_MODE
     player.messages_to_delete.append(Message.Message(msg.message_id, _title=type, _time_sent=time.time()))
     query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
     DBAccessor.update_player(_id=player.chat_id, update=query)
+
+
+def clear_duels(bot, update):
+    player = DBAccessor.get_player(update.message.chat_id)
+    for duel_id in player.duels:
+        DuelMessageBuilder.abort_duel(bot=bot, chat_id=player.chat_id, duel_id=duel_id)
+    bot.send_message(chat_id=player.chat_id, text='Aborted all your duels')

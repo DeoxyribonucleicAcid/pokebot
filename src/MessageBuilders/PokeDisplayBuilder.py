@@ -85,6 +85,10 @@ def poke_edit_name(bot, chat_id, pokemon_id):
 def poke_change_name(bot, chat_id, new_name):
     player = DBAccessor.get_player(chat_id)
     pokemon = player.get_pokemon(int(player.edit_pokemon_id))
+    if pokemon is None:
+        bot.send_message(chat_id=player.chat_id, text='Couldn\'t find editing pokemon. Blame the devs pls')
+        # MessageHelper.reset_states(bot=bot, chat_id=player.chat_id) # TODO: do this (remove comment)
+        return
     pokemon.name = new_name
     player.update_pokemon(pokemon=pokemon)
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)

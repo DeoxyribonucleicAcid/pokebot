@@ -13,4 +13,4 @@ def build_nc_msg(bot, update):
         PokeDisplayBuilder.poke_change_name(bot=bot, chat_id=update.message.chat_id, new_name=update.message.text)
     else:
         bot.send_message(chat_id=update.message.chat_id, text='Invalid Message State, Please Try Again!')
-        MessageHelper.reset_states(bot, update)
+        MessageHelper.reset_states(bot, update.message.chat_id)

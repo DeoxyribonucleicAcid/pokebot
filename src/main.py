@@ -94,7 +94,12 @@ def command_handler_chance(bot, update, args):
 
 
 def command_handler_reset(bot, update):
-    MessageHelper.reset_states(bot, update)
+    MessageHelper.reset_states(bot, update.message.chat_id)
+
+
+def command_handler_clear_duels(bot, update):
+    MessageHelper.clear_duels(bot, update)
+
 
 def main():
     logging.basicConfig(filename='.log', level=logging.DEBUG, filemode='w')
@@ -120,6 +125,7 @@ def main():
     friendlist_handler = CommandHandler('friendlist', callback=command_handler_firendlist)
     addfriend_handler = CommandHandler('addfriend', callback=command_handler_add_friend)
     reset_handler = CommandHandler('exit', callback=command_handler_reset)
+    clear_duels_handler = CommandHandler('clearduels', callback=command_handler_clear_duels)
     # DEBUG
     dispatcher.add_handler(restart_handler)
     dispatcher.add_handler(chance_handler)
@@ -138,6 +144,7 @@ def main():
     dispatcher.add_handler(friendlist_handler)
     dispatcher.add_handler(addfriend_handler)
     dispatcher.add_handler(reset_handler)
+    dispatcher.add_handler(clear_duels_handler)
 
     updater.start_polling()
     j = updater.job_queue
