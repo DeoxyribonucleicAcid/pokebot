@@ -1,8 +1,10 @@
 import logging
+import random
 
 import Constants
 import DBAccessor
 import Entities.Pokemon as Pokemon
+from Entities import Move
 from Entities.EventType import EventType
 
 
@@ -13,10 +15,10 @@ class DuelAction:
         self.target = target
         self.completed: bool = completed
 
-    def set_source(self, bot, player_id: int, source_id, initiative):
+    def set_source(self, bot, participant, source_id, initiative):
         raise NotImplementedError
 
-    def perform(self, bot, target_id):
+    def perform(self, bot, participant, target_id):
         raise NotImplementedError
 
     def serialize(self):
@@ -62,11 +64,40 @@ class DuelAction:
 
 
 class ActionAttack(DuelAction):
-    def set_source(self, bot, player_id: int, attack_id, initiative):
+    def set_source(self, bot, participant, attack_id, initiative):
+        poke = DBAccessor.get_pokemon_by_id(participant.pokemon)
+        move = next((x for x in poke.moves if x.move_id == attack_id),
+                    None)
+        if move is not None:
+            if move.target != 'selected-pokemon':
+                raise NotImplementedError('Move type is not known')
+            self.completed = True
+            self.source = move.id
+            self.initiative = poke.speed
+
         raise NotImplementedError  # TODO
 
-    def perform(self, bot, target_id):
-        raise NotImplementedError  # TODO
+    def perform(self, bot, participant, target_id):
+        move = Move.Move.get_move(Move.Move.get_move_url(self.source))
+        target_pokemon = DBAccessor.get_pokemon_by_id(target_id)
+        if random.random() > move.accuracy / 100:
+            if target_pokemon.health - move.power <= 0:
+                # Pokemon sleep now
+                damage = target_pokemon.health
+                target_pokemon.health = 0
+            else:
+                damage = move.power
+                target_pokemon.health -= move.power
+
+            query = DBAccessor.get_update_query_pokemon(health=target_pokemon.health)
+            DBAccessor.update_pokemon(_id=target_id, update=query)
+
+            bot.send_message(chat_id=participant.player_id,
+                             text='{} did {} damage.'.format(target_pokemon.name, damage))
+            return move.power
+        else:
+            return None
+
 
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.ATTACK,
@@ -77,19 +108,23 @@ class ActionAttack(DuelAction):
 
 
 class ActionExchangePoke(DuelAction):
-    def set_source(self, bot, player_id: int, pokemon_id, initiative=None):
+    def set_source(self, bot, participant, pokemon_id, initiative=None):
         pokemon_id = int(pokemon_id)
-        player = DBAccessor.get_player(player_id)
-        champion = next((x for x in player.pokemon_team if x._id == pokemon_id), None)
-        if champion is not None:
-            self.source = champion._id
+        player = DBAccessor.get_player(participant.player_id)
+        champion_id = next((x for x in player.pokemon_team if x == pokemon_id), None)
+        if champion_id is not None:
+            champion = DBAccessor.get_pokemon_by_id(champion_id)
+            self.source = champion.poke_id
             self.initiative = Constants.INITIATIVE_LEVEL.CHOOSE_POKE
             self.completed = True
+            self.target = participant.player_id
             bot.send_message(chat_id=player.chat_id,
                              text='You nominated {} as your champion!'.format(champion.name))
 
-    def perform(self, bot, target_id):
-        raise NotImplementedError
+    def perform(self, bot, participant, target_id):
+        player = DBAccessor.get_player(int(self.target))
+        # TODO: Switch to ID
+        participant.pokemon = target_id if target_id in player.pokemon_team else None
 
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,
@@ -100,10 +135,10 @@ class ActionExchangePoke(DuelAction):
 
 
 class ActionUseItem(DuelAction):
-    def set_source(self, bot, player_id: int, item_id, initiative):
+    def set_source(self, bot, participant, item_id, initiative):
         raise NotImplementedError  # TODO
 
-    def perform(self, bot, target_id):
+    def perform(self, bot, participant, target_id):
         raise NotImplementedError  # TODO
 
     def serialize(self):
@@ -115,15 +150,15 @@ class ActionUseItem(DuelAction):
 
 
 class Participant:
-    def __init__(self, player_id: int = None, action: DuelAction = None, pokemon: Pokemon.Pokemon = None):
+    def __init__(self, player_id: int = None, action: DuelAction = None, pokemon: int = None):
         self.player_id: int = player_id
         self.action: DuelAction = action
-        self.pokemon: Pokemon.Pokemon = pokemon
+        self.pokemon: int = pokemon
 
     def serialize(self):
         return {'player_id': self.player_id,
                 'action': self.action.serialize() if self.action is not None else None,
-                'pokemon': self.pokemon.serialize() if self.pokemon is not None else None}
+                'pokemon': self.pokemon if self.pokemon is not None else None}
 
     @staticmethod
     def deserialize(json):
@@ -140,9 +175,7 @@ class Participant:
             action = None
             logging.error(e)
         try:
-            pokemon = Pokemon.deserialize_pokemon(
-                json['pokemon']
-            ) if json['pokemon'] is not None else None
+            pokemon = json['pokemon'] if json['pokemon'] is not None else None
         except KeyError as e:
             pokemon = None
             logging.error(e)
@@ -219,12 +252,14 @@ class Duel(EventType):
         return duel
 
     def get_img(self, player_id: int):
+        poke1 = DBAccessor.get_pokemon_by_id(self.participant_1.pokemon)
+        poke2 = DBAccessor.get_pokemon_by_id(self.participant_2.pokemon)
         if self.participant_1.player_id == player_id:
-            return Pokemon.build_pokemon_trade_image(self.participant_1.pokemon.sprites['back'],
-                                                     self.participant_2.pokemon.sprites['front'])
+            return Pokemon.build_pokemon_trade_image(poke1.sprites['back'],
+                                                     poke2.sprites['front'])
         elif self.participant_2.player_id == player_id:
-            return Pokemon.build_pokemon_trade_image(self.participant_2.pokemon.sprites['back'],
-                                                     self.participant_1.pokemon.sprites['front'])
+            return Pokemon.build_pokemon_trade_image(poke2.sprites['back'],
+                                                     poke1.sprites['front'])
         else:
             return None
 

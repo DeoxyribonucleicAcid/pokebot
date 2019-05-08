@@ -16,6 +16,12 @@ def send_menu_message(bot, update):
     if player is not None:
         MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
                                               type=Constants.MESSAGE_TYPES.MENU_MSG)
+    else:
+        msg = bot.send_message(chat_id=update.message.chat_id,
+                               text='I do not know you yet. To be recognized next time, type /catch\n'
+                                    'This will enable encounters as well.')
+        return
+
     text, reply_markup = build_msg_menu(player.encounters if player is not None else False, trade=player.trade)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)

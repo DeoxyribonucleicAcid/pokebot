@@ -1,12 +1,12 @@
 import json
 import logging
-import math
 import os
 import random
 import urllib.request
 from io import BytesIO
 from typing import List
 
+import math
 import requests
 from PIL import Image
 
@@ -17,14 +17,18 @@ logger = logging.getLogger(__name__)
 
 class Pokemon:
     def __init__(self, pokedex_id=None, name=None, moves=None, health=None, level=None, types=None, sprites=None,
-                 height=None, weight=None, female=None, is_shiny=None, _id=None, max_health=None):
-        self._id = id(self) if _id is None else _id
+                 height=None, weight=None, female=None, is_shiny=None, poke_id=None, max_health=None,
+                 speed=None,
+                 special_defense=None,
+                 special_attack=None,
+                 defense=None,
+                 attack=None
+                 ):
+        self.poke_id = id(self) if poke_id is None else poke_id
         self.pokedex_id: int = pokedex_id
         self.name: str = name
         self.level: int = level
         self.moves: List[dict] = moves if moves is not None else []
-        self.health: float = health if health is not None else 0
-        self.max_health: float = max_health if max_health is not None else 0
         self.types: List[dict] = types if types is not None else []
         self.sprites: dict = sprites if sprites is not None else {'front': None, 'back': None}
         self.weight: int = weight
@@ -32,9 +36,18 @@ class Pokemon:
         self.female: bool = female
         self.is_shiny: bool = is_shiny
 
+        # BASE-STATS
+        self.speed = speed
+        self.special_defense = special_defense
+        self.special_attack = special_attack
+        self.defense = defense
+        self.attack = attack
+        self.health: float = health if health is not None else 0
+        self.max_health: float = max_health if max_health is not None else 0
+
     def serialize(self):
         serial = {
-            '_id': self._id,
+            '_id': self.poke_id,
             'pokedex_id': self.pokedex_id,
             'name': self.name,
             'level': self.level,
@@ -46,16 +59,21 @@ class Pokemon:
             'weight': self.weight,
             'height': self.height,
             'female': self.female,
-            'is_shiny': self.is_shiny
+            'is_shiny': self.is_shiny,
+            'speed ': self.speed,
+            'special_defense ': self.special_defense,
+            'special_attack ': self.special_attack,
+            'defense ': self.defense,
+            'attack ': self.attack
         }
         return serial
 
 
 def deserialize_pokemon(json):
     try:
-        _id = json['_id']
+        poke_id = json['_id']
     except KeyError as e:
-        _id = None
+        poke_id = None
         logging.error(e)
     try:
         pokedex_id = json['pokedex_id']
@@ -79,16 +97,6 @@ def deserialize_pokemon(json):
         moves = json['moves']
     except KeyError as e:
         moves = None
-        logging.error(e)
-    try:
-        health = json['health']
-    except KeyError as e:
-        health = None
-        logging.error(e)
-    try:
-        max_health = json['max_health']
-    except KeyError as e:
-        max_health = None
         logging.error(e)
     try:
         types = json['types']
@@ -120,19 +128,63 @@ def deserialize_pokemon(json):
     except KeyError as e:
         is_shiny = None
         logging.error(e)
-    pokemon = Pokemon(_id=_id,
+    # BASE STATS
+
+    try:
+        speed = json['speed']
+    except KeyError as e:
+        speed = None
+        logging.error(e)
+    try:
+        special_defense = json['special_defense']
+    except KeyError as e:
+        special_defense = None
+        logging.error(e)
+    try:
+        special_attack = json['special_attack']
+    except KeyError as e:
+        special_attack = None
+        logging.error(e)
+    try:
+        defense = json['defense']
+    except KeyError as e:
+        defense = None
+        logging.error(e)
+    try:
+        attack = json['attack']
+    except KeyError as e:
+        attack = None
+        logging.error(e)
+    try:
+        health = json['health']
+    except KeyError as e:
+        health = None
+        logging.error(e)
+    try:
+        max_health = json['max_health']
+    except KeyError as e:
+        max_health = None
+        logging.error(e)
+
+    pokemon = Pokemon(poke_id=poke_id,
                       pokedex_id=pokedex_id,
                       name=name,
                       level=level,
                       moves=moves,
-                      health=health,
-                      max_health=max_health,
                       types=types,
                       sprites=sprites,
                       weight=weight,
                       height=height,
                       female=female,
-                      is_shiny=is_shiny)
+                      is_shiny=is_shiny,
+                      speed=speed,
+                      special_defense=special_defense,
+                      special_attack=special_attack,
+                      defense=defense,
+                      attack=attack,
+                      health=health,
+                      max_health=max_health,
+                      )
     return pokemon
 
 
@@ -158,7 +210,12 @@ def get_random_poke(poke_json, level_reference):
 
     height = poke_json['height']
     weight = poke_json['weight']
-    health = level_reference * 1.5
+    speed = list(filter(lambda x: x['stat']['name'] == 'speed', poke_json['stats']))[0]['base_stat']
+    special_defense = list(filter(lambda x: x['stat']['name'] == 'special-defense', poke_json['stats']))[0]['base_stat']
+    special_attack = list(filter(lambda x: x['stat']['name'] == 'special-attack', poke_json['stats']))[0]['base_stat']
+    defense = list(filter(lambda x: x['stat']['name'] == 'defense', poke_json['stats']))[0]['base_stat']
+    attack = list(filter(lambda x: x['stat']['name'] == 'attack', poke_json['stats']))[0]['base_stat']
+    health = list(filter(lambda x: x['stat']['name'] == 'hp', poke_json['stats']))[0]['base_stat']
     level = random.randint(max(level_reference - 5, 0), level_reference + 5)
     types = []
     for type in poke_json[u'types']:
@@ -171,8 +228,14 @@ def get_random_poke(poke_json, level_reference):
             possible_moves.append(move_)
     max_moves = 4 if len(possible_moves) > 4 else len(possible_moves)
     moves = random.sample(possible_moves, max_moves)
-    pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, level=level, types=types,
-                      sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny)
+    pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, max_health=health, level=level,
+                      types=types, sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny,
+                      speed=speed,
+                      special_defense=special_defense,
+                      special_attack=special_attack,
+                      defense=defense,
+                      attack=attack,
+                      )
     return pokemon
 
 

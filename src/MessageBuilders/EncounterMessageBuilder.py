@@ -1,9 +1,9 @@
 import logging
-import math
 import random
 import time
 from io import BytesIO
 
+import math
 import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -57,6 +57,7 @@ def build_encounter_message(bot):
             bio.name = 'catch_img_' + str(player.chat_id) + '.png'
             image.save(bio, 'PNG')
             bio.seek(0)
+            DBAccessor.insert_new_pokemon(pokemon)
             try:
                 MessageHelper.delete_messages_by_type(bot, chat_id=player.chat_id,
                                                       type=Constants.MESSAGE_TYPES.ENCOUNTER_MSG)
@@ -80,7 +81,7 @@ def catch(bot, chat_id, option):
     player = DBAccessor.get_player(chat_id)
     option = int(option)
     if option == player.encounter.pokemon_direction:
-        if (len(player.pokemon) > 0) and (player.encounter.pokemon._id == player.pokemon[-1]._id):
+        if (len(player.pokemon) > 0) and (player.encounter.pokemon.poke_id == player.pokemon[-1]):
             return
         bot.send_message(chat_id=player.chat_id, text='captured ' + player.encounter.pokemon.name + '!')
         for i in player.get_messages(Constants.MESSAGE_TYPES.ENCOUNTER_MSG):
@@ -89,6 +90,6 @@ def catch(bot, chat_id, option):
             except telegram.error.BadRequest as e:
                 logging.error(e)
         # Reset Player's encounter
-        player.pokemon.append(player.encounter.pokemon)
+        player.pokemon.append(player.encounter.pokemon.poke_id)
         update = DBAccessor.get_update_query_player(pokemon=player.pokemon, encounter=None)
         DBAccessor.update_player(_id=player.chat_id, update=update)

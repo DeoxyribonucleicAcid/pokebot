@@ -97,7 +97,8 @@ def trade_pokemon_chosen(bot, chat_id, pokemon_id):
     player = DBAccessor.get_player(_id=chat_id)
     MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)
     if player.trade is not None:
-        player.trade.pokemon = player.remove_pokemon(pokemon_id)
+        player.trade.pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
+        player.pokemon.remove(pokemon_id)
     else:
         bot.send_message(chat_id=player.chat_id, text='Your trade exceeded.')
         return
@@ -159,21 +160,21 @@ def trade_accept(bot, chat_id):
                                                                                      player.username,
                                                                                      partner.trade.pokemon.name))
 
-            player.pokemon.append(partner.trade.pokemon)
-            partner.pokemon.append(player.trade.pokemon)
+            player.pokemon.append(partner.trade.pokemon.poke_id)
+            partner.pokemon.append(player.trade.pokemon.poke_id)
             player.trade, partner.trade = None, None
 
-            query_player = {'$set': {'pokemon': [i.serialize() for i in player.pokemon]},
+            query_player = {'$set': {'pokemon': [i for i in player.pokemon]},
                             '$unset': {'trade': 1}}
-            query_partner = {'$set': {'pokemon': [i.serialize() for i in partner.pokemon]},
+            query_partner = {'$set': {'pokemon': [i for i in partner.pokemon]},
                              '$unset': {'trade': 1}}
             DBAccessor.update_player(_id=player.chat_id, update=query_player)
             DBAccessor.update_player(_id=partner.chat_id, update=query_partner)
 
             PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=player.chat_id, trade_mode=False, page_num=0,
-                                                  poke_id=player.pokemon[-1]._id)
+                                                  poke_id=player.pokemon[-1].poke_id)
             PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=partner.chat_id, trade_mode=False, page_num=0,
-                                                  poke_id=partner.pokemon[-1]._id)
+                                                  poke_id=partner.pokemon[-1].poke_id)
         else:
             player.trade.accepted = True
             query_player = DBAccessor.get_update_query_player(trade=player.trade)

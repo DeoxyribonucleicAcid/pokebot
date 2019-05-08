@@ -31,11 +31,12 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
         player.pokemon)
     page_list = player.pokemon[list_start:list_end]
     keys = []
-    for pokemon in page_list:
+    for pokemon_id in page_list:
+        pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
         keys.append([InlineKeyboardButton(text=pokemon.name,
                                           callback_data=Constants.CALLBACK.POKE_DISPLAY_CONFIG(trade_mode=trade_mode,
                                                                                                page_number=page_number,
-                                                                                               pokemon_id=pokemon._id))
+                                                                                               pokemon_id=pokemon.poke_id))
                      ])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)

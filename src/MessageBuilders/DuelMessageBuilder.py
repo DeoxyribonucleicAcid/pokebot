@@ -121,40 +121,57 @@ def build_msg_duel_invite_deny(bot, chat_id, init_player_id):
                      text='Your friend is currently not interested in a challenge.')
 
 
-def calc_round(bot, duel: Duel.Duel):
+def calc_round(bot, duel_id: int):
+    # Floor( ½ * Power * \frac{Atk}{Def} * Multipliers) + 1
+    duel = DBAccessor.get_duel_by_id(int(duel_id))
     logging.info('Calculating round {} of duel {}'.format(duel.round, duel.event_id))
+    poke_part_1_id = duel.participant_1.pokemon
+    poke_part_2_id = duel.participant_1.pokemon
+    if duel.participant_1.action.initiative == duel.participant_2.action.initiative:
+        # handle simultaneous actions
+        pass
+    elif duel.participant_1.action.initiative < duel.participant_2.action.initiative:
+        # handle participant 1 first
+        # TODO: Target has to be known to action -> no needed as parameter
+        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
+    else:
+        # handle participant 2 first
+        # TODO: Target has to be known to action -> no needed as parameter
+        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
+        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
 
 
 def build_msg_duel_action_chosen_source(bot, chat_id, duel_id, source_id):
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
     duel = DBAccessor.get_duel_by_id(int(duel_id))
     if chat_id == duel.participant_1.player_id:
-        duel.participant_1.action.set_source(bot, chat_id, source_id)
+        duel.participant_1.action.set_source(bot, duel.participant_1, source_id)
         query = DBAccessor.get_update_query_duel(participant_1=duel.participant_1)
     elif chat_id == duel.participant_2.player_id:
-        duel.participant_2.action.set_source(bot, chat_id, source_id)
+        duel.participant_2.action.set_source(bot, duel.participant_2, source_id)
         query = DBAccessor.get_update_query_duel(participant_2=duel.participant_2)
     else:
         raise AttributeError('Duel Participants incorrect: Duel_id: {}'.format(duel.event_id))
     DBAccessor.update_duel(_id=duel.event_id, update=query)
     if duel.participant_1.action.completed and duel.participant_2.action.completed:
-        calc_round(bot, duel)
+        calc_round(bot, duel_id)
 
 
 def build_msg_duel_action_chosen_target(bot, chat_id, duel_id, target_id):
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
     duel = DBAccessor.get_duel_by_id(int(duel_id))
     if chat_id == duel.participant_1.player_id:
-        duel.participant_1.action.perform(bot, chat_id, target_id)
+        duel.participant_1.action.perform(bot, duel.participant_1, target_id)
         query = DBAccessor.get_update_query_duel(participant_1=duel.participant_1)
     elif chat_id == duel.participant_2.player_id:
-        duel.participant_2.action.perform(bot, chat_id, target_id)
+        duel.participant_2.action.perform(bot, duel.participant_2, target_id)
         query = DBAccessor.get_update_query_duel(participant_2=duel.participant_2)
     else:
         raise AttributeError('Duel Participants incorrect: Duel_id: {}'.format(duel.event_id))
     DBAccessor.update_duel(_id=duel.event_id, update=query)
     if duel.participant_1.action.completed and duel.participant_2.action.completed:
-        calc_round(bot, duel)
+        calc_round(bot, duel_id)
 
 
 def build_msg_duel_action_pokemon(bot, chat_id, duel_id):
@@ -177,19 +194,22 @@ def build_msg_duel_action_pokemon(bot, chat_id, duel_id):
 
 def build_msg_duel_action_attack(bot, chat_id, duel_id):
     duel = DBAccessor.get_duel_by_id(int(duel_id))
-    participant = duel.get_counterpart_by_id(chat_id)
-    if participant.pokemon is None:
-        bot.send_message(chat_id=participant.player_id,
+    participant_player = duel.get_participant_by_id(chat_id)
+    # participant = duel.get_counterpart_by_id(chat_id)
+    poke1 = DBAccessor.get_pokemon_by_id(participant_player.pokemon)
+    # poke2 = DBAccessor.get_pokemon_by_id(participant.pokemon)
+    if participant_player.pokemon is None:
+        bot.send_message(chat_id=participant_player.player_id,
                          text='Your pokemon-champion is somehow not set! You have to choose again')
         raise AttributeError('Champion is None: Duel_id: {}'.format(duel.event_id))
-    elif participant.pokemon.moves is None or len(participant.pokemon.moves) is 0:
-        bot.send_message(chat_id=participant.player_id,
+    elif poke1.moves is None or len(poke1.moves) is 0:
+        bot.send_message(chat_id=participant_player.player_id,
                          text='Your pokemon-champion has not enough attack moves!')
         raise AttributeError('Champion has no moves: Duel_id: {} Poke_id: {}'
-                             .format(duel.event_id, participant.pokemon._id))
+                             .format(duel.event_id, participant_player.pokemon))
 
     keys = []
-    for m in participant.pokemon.moves:
+    for m in poke1.moves:
         # id
         # accuracy
         # power
@@ -204,7 +224,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
                                           callback_data=Constants.CALLBACK.DUEL_ACTION_CHOSEN(event_id=duel.event_id,
                                                                                               source_id=move.move_id))])
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
-    image = Pokemon.get_pokemon_portrait_image(pokemon_sprite=participant.pokemon.sprites['front'])
+    image = Pokemon.get_pokemon_portrait_image(pokemon_sprite=poke1.sprites['front'])
     if image is not None:
         bio = BytesIO()
         bio.name = 'image_duel_choose_attack_' + str(chat_id) + '.png'
@@ -214,12 +234,12 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
         msg = bot.send_photo(chat_id=chat_id,
                              photo=bio,
                              reply_markup=reply_markup,
-                             caption='Choose {}\'s attack'.format(participant.pokemon.name),
+                             caption='Choose {}\'s attack'.format(poke1.name),
                              parse_mode=ParseMode.MARKDOWN)
     else:
         msg = bot.send_message(chat_id=chat_id,
                                text='Your team is empty, nominate some pokemon!')
-    player = DBAccessor.get_player(int(participant.player_id))
+    player = DBAccessor.get_player(int(chat_id))
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG, _time_sent=time.time()))
     update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
@@ -257,11 +277,12 @@ def build_choose_from_team(bot, chat_id, duel_id):
                               'Please remove some :) (and blame the devs)')
         return
     pokemon_sprite_list, keys = [], []
-    for pokemon in player.pokemon_team:
+    for pokemon_id in player.pokemon_team:
+        pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
         keys.append([InlineKeyboardButton(text='{} Level:{} Health:{}/{}'.format(pokemon.name, pokemon.level,
                                                                                  pokemon.health, pokemon.max_health),
                                           callback_data=Constants.CALLBACK.DUEL_ACTION_CHOSEN(event_id=duel.event_id,
-                                                                                              source_id=pokemon._id))])
+                                                                                              source_id=pokemon.poke_id))])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list=pokemon_sprite_list, max_row_len=3)

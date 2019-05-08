@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class Trade:
     def __init__(self, trade_id=None, pokemon=None, partner_id=None, accepted=None):
         self.trade_id = id(self) if trade_id is None else trade_id
+        # TODO: Switch to id
         self.pokemon: Pokemon = pokemon
         self.partner_id: int = partner_id
         self.accepted: bool = accepted

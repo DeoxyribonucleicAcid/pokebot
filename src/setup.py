@@ -2,9 +2,9 @@ import argparse
 import json
 import logging
 import os
-import setproctitle
 
 import pymongo
+import setproctitle
 
 from src.EichState import EichState
 
@@ -76,6 +76,8 @@ def db_setup():
 
     player_collection = db["player"]
     duel_collection = db["duel"]
+    poke_collection = db["pokemon"]
     EichState.db = db
     EichState.player_col = player_collection
     EichState.duel_col = duel_collection
+    EichState.poke_col = poke_collection
