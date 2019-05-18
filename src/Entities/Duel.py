@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import List
 
 import Constants
 import DBAccessor
@@ -150,9 +151,10 @@ class ActionUseItem(DuelAction):
 
 
 class Participant:
-    def __init__(self, player_id: int = None, action: DuelAction = None, pokemon: int = None):
+    def __init__(self, player_id: int = None, action: DuelAction = None, team: List[int] = None, pokemon: int = None):
         self.player_id: int = player_id
         self.action: DuelAction = action
+        self.team: List[int] = team
         self.pokemon: int = pokemon
 
     def serialize(self):

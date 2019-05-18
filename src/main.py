@@ -92,6 +92,9 @@ def command_handler_restart(bot, update):
 def command_handler_chance(bot, update, args):
     MessageBuilder.adjust_encounter_chance(bot, update.message.chat_id, int(args[0]) if len(args) > 0 else None)
 
+def command_handler_test(bot, update, args):
+    MessageBuilder.test(bot, update)
+
 
 def command_handler_reset(bot, update):
     MessageHelper.reset_states(bot, update.message.chat_id)
@@ -110,6 +113,7 @@ def main():
     # DEBUG
     restart_handler = CommandHandler('restart', callback=command_handler_restart)
     chance_handler = CommandHandler('chance', callback=command_handler_chance, pass_args=True)
+    test_handler = CommandHandler('test', callback=command_handler_test, pass_args=True)
     #
     nc_msg_handler = MessageHandler(Filters.text, callback=command_handler_nc_msg)
     start_handler = CommandHandler('start', callback=command_handler_start)
@@ -129,6 +133,7 @@ def main():
     # DEBUG
     dispatcher.add_handler(restart_handler)
     dispatcher.add_handler(chance_handler)
+    dispatcher.add_handler(test_handler)
     #
     dispatcher.add_handler(nc_msg_handler)
     dispatcher.add_handler(start_handler)

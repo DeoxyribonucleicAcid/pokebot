@@ -1,13 +1,15 @@
 import logging
-import math
 import os
 import sys
 import time
 from functools import wraps
+from io import BytesIO
 
+import math
 from telegram import ChatAction
 
 import DBAccessor as DBAccessor
+from Entities import Pokemon
 from src.EichState import EichState
 
 logger = logging.getLogger(__name__)
@@ -83,3 +85,22 @@ def adjust_encounter_chance(bot, chat_id, chance):
         player = DBAccessor.get_player(chat_id)
         chance = pow(1 / (24 * 60 * 60) * (now - player.last_encounter), math.e)
         msg = bot.send_message(chat_id=chat_id, text='Current chance is ' + str(int(chance * 100)) + '%')
+
+
+def test(bot, update):
+    player = DBAccessor.get_player(update.effective_message.chat_id)
+    pokemon_player = [DBAccessor.get_pokemon_by_id(i) for i in player.pokemon[:3]]
+    pokemon_enemy=DBAccessor.get_pokemon_by_id(player.pokemon[4])
+    img = Pokemon.build_pokemon_duel_info_image(pokemon_player, pokemon_enemy)
+    if img is not None:
+        bio = BytesIO()
+        bio.name = 'image_duel_info_' + str(player.chat_id) + '.png'
+        img.save(bio, 'PNG')
+        bio.seek(0)
+        msg = bot.send_photo(chat_id=player.chat_id,
+                             photo=bio,
+                             caption='Current Status')
+    else:
+        msg = bot.send_message(chat_id=player.chat_id,
+                               text='Something went wrong!')
+

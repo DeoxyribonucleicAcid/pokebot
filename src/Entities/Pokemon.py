@@ -8,7 +8,8 @@ from typing import List
 
 import math
 import requests
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
+from emoji import emojize
 
 from src.EichState import EichState
 
@@ -18,12 +19,7 @@ logger = logging.getLogger(__name__)
 class Pokemon:
     def __init__(self, pokedex_id=None, name=None, moves=None, health=None, level=None, types=None, sprites=None,
                  height=None, weight=None, female=None, is_shiny=None, poke_id=None, max_health=None,
-                 speed=None,
-                 special_defense=None,
-                 special_attack=None,
-                 defense=None,
-                 attack=None
-                 ):
+                 speed=None, special_defense=None, special_attack=None, defense=None, attack=None, in_duel=None):
         self.poke_id = id(self) if poke_id is None else poke_id
         self.pokedex_id: int = pokedex_id
         self.name: str = name
@@ -44,6 +40,7 @@ class Pokemon:
         self.attack = attack
         self.health: float = health if health is not None else 0
         self.max_health: float = max_health if max_health is not None else 0
+        self.in_duel: bool = in_duel
 
     def serialize(self):
         serial = {
@@ -60,11 +57,12 @@ class Pokemon:
             'height': self.height,
             'female': self.female,
             'is_shiny': self.is_shiny,
-            'speed ': self.speed,
-            'special_defense ': self.special_defense,
-            'special_attack ': self.special_attack,
-            'defense ': self.defense,
-            'attack ': self.attack
+            'speed': self.speed,
+            'special_defense': self.special_defense,
+            'special_attack': self.special_attack,
+            'defense': self.defense,
+            'attack': self.attack,
+            'in_duel': self.in_duel
         }
         return serial
 
@@ -165,6 +163,11 @@ def deserialize_pokemon(json):
     except KeyError as e:
         max_health = None
         logging.error(e)
+    try:
+        in_duel = json['in_duel']
+    except KeyError as e:
+        in_duel = None
+        logging.error(e)
 
     pokemon = Pokemon(poke_id=poke_id,
                       pokedex_id=pokedex_id,
@@ -184,6 +187,7 @@ def deserialize_pokemon(json):
                       attack=attack,
                       health=health,
                       max_health=max_health,
+                      in_duel=in_duel
                       )
     return pokemon
 
@@ -230,12 +234,8 @@ def get_random_poke(poke_json, level_reference):
     moves = random.sample(possible_moves, max_moves)
     pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, max_health=health, level=level,
                       types=types, sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny,
-                      speed=speed,
-                      special_defense=special_defense,
-                      special_attack=special_attack,
-                      defense=defense,
-                      attack=attack,
-                      )
+                      speed=speed, special_defense=special_defense, special_attack=special_attack,
+                      defense=defense, attack=attack, in_duel=False)
     return pokemon
 
 
@@ -344,6 +344,55 @@ def build_pokemon_trade_image(pokemon_going_sprite, pokemon_coming_sprite):
     background.paste(image_going, (int(width_total * 0.18), int(height_total * 0.25)), mask=alpha_going)
     background.paste(image_coming, (int(width_total * 0.50), int(height_total * 0.8)), mask=alpha_coming)
     return background
+
+
+def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], pokemon_opponent: Pokemon):
+    images = [get_poke_image(i.sprites['front']) for i in pokemon_team]
+    width, height = images[0].size
+    width_total, height_total = width * 4, (len(images) + 1) * height
+    image_info = Image.new('RGBA', (width_total, height_total))
+    heart = emojize(":heart:", use_aliases=True)
+    i = 0
+    for i, img in enumerate(images):
+        alpha = img.convert('RGBA').split()[-1]
+        if i % 2 is 0:
+            bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
+        else:
+            bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
+        bg.paste(img, mask=alpha)
+        image_info.paste(bg, (0, i * height))
+        draw = ImageDraw.Draw(image_info)
+        font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                                  + '/res/fonts/Pokemon_GB.ttf',
+                                  16, encoding="unic")
+        # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
+        draw.text((width + 10, i * height + 10),
+                  u'{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_team[i].name, pokemon_team[i].health,
+                                                              pokemon_team[i].max_health, pokemon_team[i].attack,
+                                                              pokemon_team[i].defense),
+                  (180, 0, 0), font)
+    i += 1
+    poke_opp_img = get_poke_image(pokemon_opponent.sprites['front'])
+    alpha = poke_opp_img.convert('RGBA').split()[-1]
+    if i % 2 is 0:
+        bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
+    else:
+        bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
+    bg.paste(poke_opp_img, mask=alpha)
+    image_info.paste(bg, (0, i * height))
+    draw = ImageDraw.Draw(image_info)
+    font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                              + '/res/fonts/Pokemon_GB.ttf',
+                              16, encoding="unic")
+    # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
+    draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
+    draw.text((width + 10, i * height + 10),
+              u'Enemy:\n{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_opponent.name, pokemon_opponent.health,
+                                                          pokemon_opponent.max_health, pokemon_opponent.attack,
+                                                          pokemon_opponent.defense),
+              (180, 0, 0), font)
+
+    return image_info
 
 
 def get_pokemon_portrait_image(pokemon_sprite):

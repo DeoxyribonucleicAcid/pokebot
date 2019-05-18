@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 import telegram
 from emoji import emojize
@@ -22,7 +23,8 @@ def send_menu_message(bot, update):
                                     'This will enable encounters as well.')
         return
 
-    text, reply_markup = build_msg_menu(player.encounters if player is not None else False, trade=player.trade)
+    text, reply_markup = build_msg_menu(player.chat_id, player.encounters if player is not None else False,
+                                        trade=player.trade, duels=player.duels)
     msg = bot.send_message(chat_id=update.message.chat_id, text=text,
                            reply_markup=reply_markup)
     if player is None:
@@ -44,7 +46,8 @@ def update_menu_message(bot, chat_id, msg_id):
     # msg_id = len(player.messages_to_delete) - 1 - next(
     #    (i for i, x in enumerate(reversed(player.messages_to_delete)) if x._title == Constants.MESSAGE_TYPES.MENU_MSG),
     #     len(player.messages_to_delete))
-    text, reply_markup = build_msg_menu(encounters=player.encounters, trade=player.trade)
+    text, reply_markup = build_msg_menu(player.chat_id, encounters=player.encounters, trade=player.trade,
+                                        duels=player.duels)
     try:
         bot.edit_message_text(chat_id=chat_id, text=text, message_id=msg_id,
                               reply_markup=reply_markup)
@@ -53,7 +56,7 @@ def update_menu_message(bot, chat_id, msg_id):
             raise e
 
 
-def build_msg_menu(encounters: bool, trade: Trade):
+def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
     x = None
     if encounters:
         catch_button_text = u'Encounters  ' + emojize(":white_check_mark:", use_aliases=True)  # \U00002713'
@@ -70,6 +73,13 @@ def build_msg_menu(encounters: bool, trade: Trade):
         keys.append([InlineKeyboardButton(
             text='{} Abort trade with {} {}'.format(x, DBAccessor.get_player(int(trade.partner_id)).username, x),
             callback_data=Constants.CALLBACK.TRADE_ABORT)])
+    if duels is not None:
+        for duel_id in duels:
+            duel = DBAccessor.get_duel_by_id(int(duel_id))
+            keys.append([InlineKeyboardButton(
+                text='View duel with {}'.format(DBAccessor.get_player(
+                    int(duel.get_counterpart_by_id(chat_id).player_id))),
+                callback_data=Constants.CALLBACK.DUEL_ACTIVE)])
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup

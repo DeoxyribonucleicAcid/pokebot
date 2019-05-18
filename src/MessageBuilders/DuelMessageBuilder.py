@@ -251,6 +251,9 @@ def build_msg_duel_action_item(bot, chat_id, duel_id):
 
 
 def build_msg_duel_active(bot, chat_id, duel_id):
+    duel = DBAccessor.get_duel_by_id(int(duel_id))
+    poke_opponent = DBAccessor.get_pokemon_by_id(duel.get_counterpart_by_id(chat_id).pokemon)
+
     bot.send_message(chat_id=chat_id, text='Method not implemented yet.')
 
 
