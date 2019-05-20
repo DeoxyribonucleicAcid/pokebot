@@ -103,10 +103,15 @@ class CALLBACK:
 
     DUEL_ACTION_ATTACK = 'duel-action-attack'
     DUEL_ACTION_ITEM = 'duel-action-item'
-    DUEL_ACTIVE = 'duel-active'
+
+    @staticmethod
+    def DUEL_ACTIVE(event_id: int): return 'duel-active%' + str(event_id)
 
     @staticmethod
     def DUEL_ABORT(event_id: int): return 'duel-abort%' + str(event_id)
+
+    @staticmethod
+    def DUEL_TEAM_NOMINATE(event_id: int): return 'duel-team-nominate%' + str(event_id)
 
     # FRIEND CALLBACKS
     FRIEND_ADD = 'friend-add'

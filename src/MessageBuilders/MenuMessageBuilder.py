@@ -78,8 +78,8 @@ def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
             duel = DBAccessor.get_duel_by_id(int(duel_id))
             keys.append([InlineKeyboardButton(
                 text='View duel with {}'.format(DBAccessor.get_player(
-                    int(duel.get_counterpart_by_id(chat_id).player_id))),
-                callback_data=Constants.CALLBACK.DUEL_ACTIVE)])
+                    int(duel.get_counterpart_by_id(chat_id).player_id)).username),
+                callback_data=Constants.CALLBACK.DUEL_ACTIVE(duel.event_id))])
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup

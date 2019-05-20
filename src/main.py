@@ -114,6 +114,7 @@ def main():
     restart_handler = CommandHandler('restart', callback=command_handler_restart)
     chance_handler = CommandHandler('chance', callback=command_handler_chance, pass_args=True)
     test_handler = CommandHandler('test', callback=command_handler_test, pass_args=True)
+    clear_duels_handler = CommandHandler('clearduels', callback=command_handler_clear_duels)
     #
     nc_msg_handler = MessageHandler(Filters.text, callback=command_handler_nc_msg)
     start_handler = CommandHandler('start', callback=command_handler_start)
@@ -129,7 +130,6 @@ def main():
     friendlist_handler = CommandHandler('friendlist', callback=command_handler_firendlist)
     addfriend_handler = CommandHandler('addfriend', callback=command_handler_add_friend)
     reset_handler = CommandHandler('exit', callback=command_handler_reset)
-    clear_duels_handler = CommandHandler('clearduels', callback=command_handler_clear_duels)
     # DEBUG
     dispatcher.add_handler(restart_handler)
     dispatcher.add_handler(chance_handler)

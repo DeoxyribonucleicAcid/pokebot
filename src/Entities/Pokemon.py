@@ -9,7 +9,6 @@ from typing import List
 import math
 import requests
 from PIL import Image, ImageFont, ImageDraw
-from emoji import emojize
 
 from src.EichState import EichState
 
@@ -346,51 +345,88 @@ def build_pokemon_trade_image(pokemon_going_sprite, pokemon_coming_sprite):
     return background
 
 
-def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], pokemon_opponent: Pokemon):
-    images = [get_poke_image(i.sprites['front']) for i in pokemon_team]
-    width, height = images[0].size
-    width_total, height_total = width * 4, (len(images) + 1) * height
+def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: Pokemon, champion_opponent: Pokemon):
+    if pokemon_team is None and champion_opponent is None:
+        return None
+
+    # STANDOFF
+
+    filepath = os.path.join('.', 'res', 'img', 'background1.png')[1:]
+    background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
+    width, height = 64, 64
+    width_total = width * 4
+    offset = background.height / (background.width / width_total)
+    height_total = (len(pokemon_team) + 1) * height + offset if pokemon_team is not None else 2 * height
+
+    background.thumbnail((int(width_total), int(offset)), Image.ANTIALIAS)
+
+    if champion_player is not None:
+        sprite_ch_pl = get_poke_image(sprite=champion_player.sprites['back'])
+        alpha_ch_pl = sprite_ch_pl.convert('RGBA').split()[-1]
+        background.paste(sprite_ch_pl, (int(width_total * 0.18), int(height_total * 0.25)), mask=alpha_ch_pl)
+    if champion_opponent is not None:
+        sprite_ch_op = get_poke_image(sprite=champion_player.sprites['back'])
+        alpha_ch_op = sprite_ch_op.convert('RGBA').split()[-1]
+        background.paste(sprite_ch_op, (int(width_total * 0.50), int(height_total * 0.8)), mask=alpha_ch_op)
+
+    # SUMMARY
+
     image_info = Image.new('RGBA', (width_total, height_total))
-    heart = emojize(":heart:", use_aliases=True)
+    image_info.paste(background, (0,0))
+
     i = 0
-    for i, img in enumerate(images):
-        alpha = img.convert('RGBA').split()[-1]
+    font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                              + '/res/fonts/Pokemon_GB.ttf',
+                              16, encoding="unic")
+    if pokemon_team is None:
+        bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
+        image_info.paste(bg, (0, i * height))
+        draw = ImageDraw.Draw(image_info)
+        # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
+        draw.text((10, i * height + 20),
+                  u'You have not chosen your\nteam for this duel yet', (180, 0, 0), font)
+    else:
+        images = [get_poke_image(i.sprites['front']) for i in pokemon_team]
+        for i, img in enumerate(images):
+            alpha = img.convert('RGBA').split()[-1]
+            if i % 2 is 0:
+                bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
+            else:
+                bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
+            bg.paste(img, mask=alpha)
+            image_info.paste(bg, (0, i * height))
+            draw = ImageDraw.Draw(image_info)
+            draw.text((width + 10, i * height + 10),
+                      u'{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_team[i].name, pokemon_team[i].health,
+                                                                  pokemon_team[i].max_health, pokemon_team[i].attack,
+                                                                  pokemon_team[i].defense),
+                      (180, 0, 0), font)
+    i += 1
+    if champion_opponent is None:
+        bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
+        image_info.paste(bg, (0, i * height))
+        draw = ImageDraw.Draw(image_info)
+        draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
+        draw.text((10, i * height + 20),
+                  u'Your opponent hast not\nchosen his Champion yet',
+                  (180, 0, 0), font)
+    else:
+        poke_opp_img = get_poke_image(champion_opponent.sprites['front'])
+        alpha = poke_opp_img.convert('RGBA').split()[-1]
         if i % 2 is 0:
             bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
         else:
             bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
-        bg.paste(img, mask=alpha)
+        bg.paste(poke_opp_img, mask=alpha)
         image_info.paste(bg, (0, i * height))
         draw = ImageDraw.Draw(image_info)
-        font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                                  + '/res/fonts/Pokemon_GB.ttf',
-                                  16, encoding="unic")
-        # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
+        draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
         draw.text((width + 10, i * height + 10),
-                  u'{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_team[i].name, pokemon_team[i].health,
-                                                              pokemon_team[i].max_health, pokemon_team[i].attack,
-                                                              pokemon_team[i].defense),
+                  u'Enemy:\n{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(champion_opponent.name, champion_opponent.health,
+                                                                      champion_opponent.max_health,
+                                                                      champion_opponent.attack,
+                                                                      champion_opponent.defense),
                   (180, 0, 0), font)
-    i += 1
-    poke_opp_img = get_poke_image(pokemon_opponent.sprites['front'])
-    alpha = poke_opp_img.convert('RGBA').split()[-1]
-    if i % 2 is 0:
-        bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
-    else:
-        bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
-    bg.paste(poke_opp_img, mask=alpha)
-    image_info.paste(bg, (0, i * height))
-    draw = ImageDraw.Draw(image_info)
-    font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                              + '/res/fonts/Pokemon_GB.ttf',
-                              16, encoding="unic")
-    # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
-    draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
-    draw.text((width + 10, i * height + 10),
-              u'Enemy:\n{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_opponent.name, pokemon_opponent.health,
-                                                          pokemon_opponent.max_health, pokemon_opponent.attack,
-                                                          pokemon_opponent.defense),
-              (180, 0, 0), font)
 
     return image_info
 

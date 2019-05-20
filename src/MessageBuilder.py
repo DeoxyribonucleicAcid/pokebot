@@ -89,9 +89,15 @@ def adjust_encounter_chance(bot, chat_id, chance):
 
 def test(bot, update):
     player = DBAccessor.get_player(update.effective_message.chat_id)
+    if len(player.pokemon) < 5:
+        msg = bot.send_message(chat_id=player.chat_id,
+                               text='Not enough pokemon!')
+        return
+
     pokemon_player = [DBAccessor.get_pokemon_by_id(i) for i in player.pokemon[:3]]
-    pokemon_enemy=DBAccessor.get_pokemon_by_id(player.pokemon[4])
-    img = Pokemon.build_pokemon_duel_info_image(pokemon_player, pokemon_enemy)
+    pokemon_enemy = DBAccessor.get_pokemon_by_id(player.pokemon[4])
+    champion_player = DBAccessor.get_pokemon_by_id(player.pokemon[5])
+    img = Pokemon.build_pokemon_duel_info_image(pokemon_player, champion_player, pokemon_enemy)
     if img is not None:
         bio = BytesIO()
         bio.name = 'image_duel_info_' + str(player.chat_id) + '.png'
@@ -103,4 +109,3 @@ def test(bot, update):
     else:
         msg = bot.send_message(chat_id=player.chat_id,
                                text='Something went wrong!')
-
