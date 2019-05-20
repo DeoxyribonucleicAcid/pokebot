@@ -353,26 +353,26 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
 
     filepath = os.path.join('.', 'res', 'img', 'background1.png')[1:]
     background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
-    width, height = 64, 64
+    width, height = 96, 96
     width_total = width * 4
-    offset = background.height / (background.width / width_total)
-    height_total = (len(pokemon_team) + 1) * height + offset if pokemon_team is not None else 2 * height
+    offset = int(background.height / (background.width / width_total))
+    height_total = int((len(pokemon_team) + 1) * height + offset) if pokemon_team is not None else int(2 * height)
 
     background.thumbnail((int(width_total), int(offset)), Image.ANTIALIAS)
 
     if champion_player is not None:
         sprite_ch_pl = get_poke_image(sprite=champion_player.sprites['back'])
         alpha_ch_pl = sprite_ch_pl.convert('RGBA').split()[-1]
-        background.paste(sprite_ch_pl, (int(width_total * 0.18), int(height_total * 0.25)), mask=alpha_ch_pl)
+        background.paste(sprite_ch_pl, (int(width_total * 0.18), int(offset * 0.55)), mask=alpha_ch_pl)
     if champion_opponent is not None:
-        sprite_ch_op = get_poke_image(sprite=champion_player.sprites['back'])
+        sprite_ch_op = get_poke_image(sprite=champion_opponent.sprites['front'])
         alpha_ch_op = sprite_ch_op.convert('RGBA').split()[-1]
-        background.paste(sprite_ch_op, (int(width_total * 0.50), int(height_total * 0.8)), mask=alpha_ch_op)
+        background.paste(sprite_ch_op, (int(width_total * 0.50), int(offset * 0.2)), mask=alpha_ch_op)
 
     # SUMMARY
 
-    image_info = Image.new('RGBA', (width_total, height_total))
-    image_info.paste(background, (0,0))
+    image_info = Image.new('RGBA', (int(width_total), int(height_total)))
+    image_info.paste(background, (0, 0))
 
     i = 0
     font = ImageFont.truetype(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -380,10 +380,10 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
                               16, encoding="unic")
     if pokemon_team is None:
         bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
-        image_info.paste(bg, (0, i * height))
+        image_info.paste(bg, (0, i * height + offset))
         draw = ImageDraw.Draw(image_info)
         # draw.text((0, 0), "Draw This Text", (0, 0, 0), font=font)  # this will draw text with Blackcolor and 16 size
-        draw.text((10, i * height + 20),
+        draw.text((10, i * height + 20 + offset),
                   u'You have not chosen your\nteam for this duel yet', (180, 0, 0), font)
     else:
         images = [get_poke_image(i.sprites['front']) for i in pokemon_team]
@@ -394,9 +394,9 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
             else:
                 bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
             bg.paste(img, mask=alpha)
-            image_info.paste(bg, (0, i * height))
+            image_info.paste(bg, (0, i * height + offset))
             draw = ImageDraw.Draw(image_info)
-            draw.text((width + 10, i * height + 10),
+            draw.text((width + 10, i * height + 10 + offset),
                       u'{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(pokemon_team[i].name, pokemon_team[i].health,
                                                                   pokemon_team[i].max_health, pokemon_team[i].attack,
                                                                   pokemon_team[i].defense),
@@ -404,10 +404,10 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
     i += 1
     if champion_opponent is None:
         bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
-        image_info.paste(bg, (0, i * height))
+        image_info.paste(bg, (0, i * height + offset))
         draw = ImageDraw.Draw(image_info)
-        draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
-        draw.text((10, i * height + 20),
+        draw.text((0, (i * height) - 8 + offset), u'-----------------------------------------------', (180, 0, 0), font)
+        draw.text((10, i * height + 20 + offset),
                   u'Your opponent hast not\nchosen his Champion yet',
                   (180, 0, 0), font)
     else:
@@ -418,10 +418,10 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
         else:
             bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
         bg.paste(poke_opp_img, mask=alpha)
-        image_info.paste(bg, (0, i * height))
+        image_info.paste(bg, (0, i * height + offset))
         draw = ImageDraw.Draw(image_info)
-        draw.text((0, (i * height) - 8), u'-----------------------------------------------', (180, 0, 0), font)
-        draw.text((width + 10, i * height + 10),
+        draw.text((0, (i * height) - 8 + offset), u'-----------------------------------------------', (180, 0, 0), font)
+        draw.text((width + 10, i * height + 10 + offset),
                   u'Enemy:\n{}\nHealth: {}/{}\nAtt/Def: {}:{}'.format(champion_opponent.name, champion_opponent.health,
                                                                       champion_opponent.max_health,
                                                                       champion_opponent.attack,
