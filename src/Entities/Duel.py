@@ -5,7 +5,7 @@ from typing import List
 import Constants
 import DBAccessor
 import Entities.Pokemon as Pokemon
-from Entities import Move
+from Entities import Move, Message
 from Entities.EventType import EventType
 
 
@@ -25,7 +25,7 @@ class DuelAction:
     def serialize(self):
         return {'action_type': None,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -99,11 +99,10 @@ class ActionAttack(DuelAction):
         else:
             return None
 
-
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.ATTACK,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -130,7 +129,7 @@ class ActionExchangePoke(DuelAction):
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -145,21 +144,25 @@ class ActionUseItem(DuelAction):
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.USEITEM,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
 
 class Participant:
-    def __init__(self, player_id: int = None, action: DuelAction = None, team: List[int] = None, pokemon: int = None):
+    def __init__(self, player_id: int = None, action: DuelAction = None, team: List[int] = None,
+                 team_selection: Message.Message = None, pokemon: int = None):
         self.player_id: int = player_id
         self.action: DuelAction = action
         self.team: List[int] = team
+        self.team_selection: Message.Message = team_selection
         self.pokemon: int = pokemon
 
     def serialize(self):
         return {'player_id': self.player_id,
                 'action': self.action.serialize() if self.action is not None else None,
+                'team': [i for i in self.team] if self.team is not None else None,
+                'team_selection': self.team_selection.serialize_msg() if self.team_selection is not None else None,
                 'pokemon': self.pokemon if self.pokemon is not None else None}
 
     @staticmethod
@@ -177,11 +180,23 @@ class Participant:
             action = None
             logging.error(e)
         try:
+            team = [i for i in json['team']] if json['team'] is not None else None
+        except KeyError as e:
+            team = None
+            logging.error(e)
+        try:
+            team_selection = Message.deserialize_msg(
+                json['team_selection']) if json['team_selection'] is not None else None
+        except KeyError as e:
+            team_selection = None
+            logging.error(e)
+        try:
             pokemon = json['pokemon'] if json['pokemon'] is not None else None
         except KeyError as e:
             pokemon = None
             logging.error(e)
-        return Participant(player_id=player_id, action=action, pokemon=pokemon)
+        return Participant(player_id=player_id, action=action, team=team, team_selection=team_selection,
+                           pokemon=pokemon)
 
 
 class Duel(EventType):

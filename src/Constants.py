@@ -18,6 +18,8 @@ class MESSAGE_TYPES:
     DUEL_STATUS_MSG = 'duel_status_msg'
     DUEL_INVITE_MSG = 'duel_invite_msg'
     DUEL_CHOOSE_MSG = 'duel_choose_msg'
+    DUEL_TEAM_MSG = 'duel_team_msg'
+    DUEL_TEAM_DEFAULT_CUSTOM = 'duel_team_default_custom_msg'
 
 
 class NC_MSG_States(Enum):
@@ -34,6 +36,10 @@ class CHOOSE_FRIEND_MODE(Enum):
 class INITIATIVE_LEVEL(Enum):
     CHOOSE_POKE = 0
     USE_ITEM = 1
+
+
+DUEL_MIN_POKEMON_PER_TEAM = 3
+DUEL_MAX_POKEMON_PER_TEAM = 5
 
 
 class ACTION_TYPES:
@@ -89,6 +95,12 @@ class CALLBACK:
     def DUEL_START_FRIEND(friend_id: int): return 'duel-start-friend%' + str(friend_id)
 
     @staticmethod
+    def DUEL_START_DEFAULT(event_id: id): return 'duel-start-default%{}'.format(str(event_id))
+
+    @staticmethod
+    def DUEL_START_CUSTOM(event_id: id): return 'duel-start-custom%{}'.format(str(event_id))
+
+    @staticmethod
     def DUEL_INVITE_ACCEPT(chat_id: int): return 'duel-invite-accept%' + str(chat_id)
 
     @staticmethod
@@ -111,7 +123,17 @@ class CALLBACK:
     def DUEL_ABORT(event_id: int): return 'duel-abort%' + str(event_id)
 
     @staticmethod
-    def DUEL_TEAM_NOMINATE(event_id: int): return 'duel-team-nominate%' + str(event_id)
+    def DUEL_TEAM_NOMINATE(event_id: int, page_number: int, poke_id: int): return 'duel-team-nominate%{}%{}%{}'.format(
+        str(event_id), str(page_number), str(poke_id))
+
+    @staticmethod
+    def DUEL_TEAM_PAGE(event_id: int, page_num: int): return 'duel-team-page%{}%{}'.format(str(event_id), str(page_num))
+
+    @staticmethod
+    def DUEL_TEAM_ABORT(event_id: int): return 'duel-team-abort%{}'.format(str(event_id))
+
+    @staticmethod
+    def DUEL_TEAM_ACCEPT(event_id: int): return 'duel-team-accept%{}'.format(str(event_id))
 
     # FRIEND CALLBACKS
     FRIEND_ADD = 'friend-add'

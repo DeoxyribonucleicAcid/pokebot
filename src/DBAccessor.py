@@ -36,22 +36,22 @@ def get_player_by_name(username):
 
 
 def delete_player(_id: int):
-    query = {"_id": _id}
+    query = {"_id": int(_id)}
     return EichState.EichState.player_col.delete_one(query)
 
 
 def delete_duel(_id: int):
-    query = {"event_id": _id}
+    query = {"event_id": int(_id)}
     return EichState.EichState.duel_col.delete_one(query)
 
 
 def update_player(_id: int, update: dict):
-    query = {"_id": _id}
+    query = {"_id": int(_id)}
     EichState.EichState.player_col.update_one(query, update)
 
 
 def update_duel(_id: int, update: dict):
-    query = {"event_id": _id}
+    query = {"event_id": int(_id)}
     EichState.EichState.duel_col.update_one(query, update)
 
 
@@ -65,7 +65,7 @@ def get_encounter_players_cursor():
 
 
 def get_duel_by_id(event_id: int):
-    query = {"event_id": event_id}
+    query = {"event_id": int(event_id)}
     result = EichState.EichState.duel_col.find(query)
     if result.count() is 1:
         return Duel.Duel.deserialize(result.next())

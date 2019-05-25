@@ -42,6 +42,8 @@ class CALLBACK_HANDLER:
             'start': {
                 'friend': DuelMessageBuilder.build_msg_duel_start_friend,
                 'nofriend': DuelMessageBuilder.build_msg_duel_start_nofriend,
+                'default': DuelMessageBuilder.start_default_team,
+                'custom': DuelMessageBuilder.start_custom_team
             },
             'invite': {
                 'accept': DuelMessageBuilder.build_msg_duel_invite_accept,
@@ -55,6 +57,12 @@ class CALLBACK_HANDLER:
             },
             'active': DuelMessageBuilder.build_msg_duel_active,
             'abort': DuelMessageBuilder.abort_duel,
+            'team': {
+                'nominate': DuelMessageBuilder.nominate_team_member,
+                'page': DuelMessageBuilder.build_team_selection,
+                'abort': DuelMessageBuilder.abort_team_selection,
+                'accept': DuelMessageBuilder.accept_team_selection
+            }
         },
         'friend': {
             'name': None,
