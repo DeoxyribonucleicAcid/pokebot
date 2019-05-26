@@ -1,6 +1,9 @@
+import logging
 import time
 from io import BytesIO
 
+import telegram
+from emoji import emojize
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
@@ -46,6 +49,8 @@ def build_msg_trade(bot, chat_id, player_id=None):
         DBAccessor.update_player(_id=player.chat_id, update=query_player)
 
         msg = bot.send_message(chat_id=chat_id, text='Choose your Pokemon to trade:')
+        MessageHelper.append_message_to_player(player.chat_id, message_id=msg.message_id,
+                                               type=Constants.MESSAGE_TYPES.BAG_MSG)
         BagMessageBuilder.build_msg_bag(bot=bot, chat_id=player.chat_id, page_number=0, trade_mode=True)
 
 
@@ -59,9 +64,13 @@ def trade_invite_confirm(bot, chat_id, init_player_id):
 
 
 def trade_invite_deny(bot, chat_id, init_player_id):
+    init_player_id = int(init_player_id)
     player = DBAccessor.get_player(chat_id)
-    init_player = DBAccessor.get_player(int(init_player_id))
+    init_player = DBAccessor.get_player(init_player_id)
     MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.TRADE_INVITE_MSG)
+    if init_player.trade is not None:
+        DBAccessor.update_player(init_player_id, {'$unset': {'trade': 1}})
+        MessageHelper.delete_messages_by_type(bot, init_player_id, Constants.MESSAGE_TYPES.BAG_MSG)
 
     bot.send_message(chat_id=player.chat_id,
                      text='Trade cancelled')
@@ -96,7 +105,9 @@ def trade_pokemon_chosen(bot, chat_id, pokemon_id):
     pokemon_id = int(pokemon_id)
     player = DBAccessor.get_player(_id=chat_id)
     MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)
-    if player.trade is not None:
+    if player.trade.pokemon is not None and player.trade.pokemon.poke_id == pokemon_id:
+        pass
+    elif player.trade is not None:
         player.trade.pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
         player.pokemon.remove(pokemon_id)
     else:
@@ -126,13 +137,28 @@ def trade_pokemon_chosen(bot, chat_id, pokemon_id):
             image_partner.save(bio_partner, 'PNG')
             bio_partner.seek(0)
             keys = [[InlineKeyboardButton(text='Yes', callback_data=Constants.CALLBACK.TRADE_ACCEPT),
-                     InlineKeyboardButton(text='Nope', callback_data=Constants.CALLBACK.TRADE_ABORT)]]
+                     InlineKeyboardButton(text='Nope and abort', callback_data=Constants.CALLBACK.TRADE_ABORT)]]
             reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
 
-            msg = bot.send_photo(chat_id=player.chat_id, text='Both of you have chosen. Do you accept this trade?',
-                                 photo=bio_player, reply_markup=reply_markup)
-            msg = bot.send_photo(chat_id=partner.chat_id, text='Both of you have chosen. Do you accept this trade?',
-                                 photo=bio_partner, reply_markup=reply_markup)
+            msg_play = bot.send_photo(chat_id=player.chat_id, caption='Both of you have chosen. '
+                                                                      '{} will entrust {} to you, you will part with {} '
+                                                                      'in exchange. Do you accept this trade?'.format(
+                partner.username, partner.trade.pokemon.name, player.trade.pokemon.name),
+                                      photo=bio_player, reply_markup=reply_markup)
+            msg_part = bot.send_photo(chat_id=partner.chat_id, caption='Both of you have chosen. '
+                                                                       '{} will entrust {} to you, you will part with {} '
+                                                                       'in exchange. Do you accept this trade?'.format(
+                player.username, player.trade.pokemon.name, partner.trade.pokemon.name),
+                                      photo=bio_partner, reply_markup=reply_markup)
+            player.messages_to_delete.append(
+                Message.Message(msg_play.message_id, Constants.MESSAGE_TYPES.TRADE_CONFIRM_MSG, time.time()))
+            partner.messages_to_delete.append(
+                Message.Message(msg_part.message_id, Constants.MESSAGE_TYPES.TRADE_CONFIRM_MSG, time.time()))
+            DBAccessor.update_player(player.chat_id,
+                                     DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete))
+            DBAccessor.update_player(partner.chat_id,
+                                     DBAccessor.get_update_query_player(messages_to_delete=partner.messages_to_delete))
+
             return
 
     bot.send_message(chat_id=player.chat_id,
@@ -172,9 +198,9 @@ def trade_accept(bot, chat_id):
             DBAccessor.update_player(_id=partner.chat_id, update=query_partner)
 
             PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=player.chat_id, trade_mode=False, page_num=0,
-                                                  poke_id=player.pokemon[-1].poke_id)
+                                                  poke_id=player.pokemon[-1])
             PokeDisplayBuilder.build_poke_display(bot=bot, chat_id=partner.chat_id, trade_mode=False, page_num=0,
-                                                  poke_id=partner.pokemon[-1].poke_id)
+                                                  poke_id=partner.pokemon[-1])
         else:
             player.trade.accepted = True
             query_player = DBAccessor.get_update_query_player(trade=player.trade)
@@ -191,7 +217,14 @@ def trade_abort(bot, chat_id):
     if player.trade is not None:
         partner = DBAccessor.get_player(player.trade.partner_id)
         menu_msg_id = player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id
-        MenuMessageBuilder.update_menu_message(bot, chat_id, menu_msg_id)
+        try:
+            MenuMessageBuilder.update_menu_message(bot, chat_id, menu_msg_id)
+        except telegram.error.BadRequest as e:
+            if not e.message.startswith('Message is not modified'):
+                raise e
+            else:
+                logging.error('Suppressed:' + str(e))
+
         bot.send_message(chat_id=partner.chat_id, text='{} has aborted the trade.'.format(player.username))
         bot.send_message(chat_id=player.chat_id, text='The trade will be aborted.')
         partner.trade, player.trade = None, None
@@ -202,3 +235,42 @@ def trade_abort(bot, chat_id):
     else:
         bot.send_message(chat_id=chat_id, text='Your trade exceeded anyway.')
         return
+
+
+def trade_status(bot, chat_id):
+    player = DBAccessor.get_player(chat_id)
+    partner = DBAccessor.get_player(player.trade.partner_id)
+    x = emojize(":x:", use_aliases=True)
+    abort_key = InlineKeyboardButton(
+        text='{} Abort trade with {} {}'.format(x, DBAccessor.get_player(int(player.trade.partner_id)).username, x),
+        callback_data=Constants.CALLBACK.TRADE_ABORT)
+    if player.trade is None:
+        bot.send_message(chat_id=chat_id, text='You are currently not trading so there is no status to display.')
+    elif player.trade.pokemon is None:
+        keys = [[InlineKeyboardButton(text='Choose your Pokemon to trade',
+                                      callback_data=Constants.CALLBACK.TRADE_POKELIST)], [abort_key]]
+        reply_markup = InlineKeyboardMarkup(keys)
+        msg = bot.send_message(chat_id=chat_id, text='Your trade with {}:'.format(partner.username),
+                               reply_markup=reply_markup)
+    elif partner.trade.pokemon is None:
+        keys = [
+            [InlineKeyboardButton(text='Send a ping', callback_data=Constants.CALLBACK.TRADE_NOTIFY(partner.chat_id))],
+            [abort_key]]
+        msg = bot.send_message(chat_id=chat_id,
+                               text='{} has not choosen a Pokemon yet. Shall i remember him of the trade?',
+                               reply_markup=keys)
+    else:
+        trade_pokemon_chosen(bot, chat_id, player.trade.pokemon.poke_id)
+
+
+def build_pokelist_for_trade(bot, chat_id):
+    msg = bot.send_message(chat_id=chat_id, text='Choose your Pokemon to trade:')
+    BagMessageBuilder.build_msg_bag(bot=bot, chat_id=chat_id, page_number=0, trade_mode=True)
+
+
+def notify_partner(bot, chat_id, partner_id):
+    msg_ping = bot.send_message(chat_id=partner_id,
+                                text='Your trading-partner is waiting for a response and is getting impatient.')
+    MessageHelper.append_message_to_player(partner_id, message_id=msg_ping.message_id,
+                                           type=Constants.MESSAGE_TYPES.TRADE_STATUS_MSG)
+    trade_status(bot, partner_id)

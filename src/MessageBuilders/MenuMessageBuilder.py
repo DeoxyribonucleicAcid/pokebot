@@ -71,8 +71,8 @@ def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
     if trade is not None:
         x = emojize(":x:", use_aliases=True) if x is None else x
         keys.append([InlineKeyboardButton(
-            text='{} Abort trade with {} {}'.format(x, DBAccessor.get_player(int(trade.partner_id)).username, x),
-            callback_data=Constants.CALLBACK.TRADE_ABORT)])
+            text='View trade with {}'.format(DBAccessor.get_player(int(trade.partner_id)).username),
+            callback_data=Constants.CALLBACK.TRADE_STATUS)])
     if duels is not None:
         for duel_id in duels:
             duel = DBAccessor.get_duel_by_id(int(duel_id))

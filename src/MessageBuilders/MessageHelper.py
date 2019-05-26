@@ -26,6 +26,12 @@ def delete_messages_by_type(bot, chat_id, type):
         DBAccessor.update_player(_id=player.chat_id, update=update)
 
 
+def append_message_to_player(chat_id, message_id, type):
+    player = DBAccessor.get_player(chat_id)
+    player.messages_to_delete.append(Message.Message(message_id, type, time.time()))
+    DBAccessor.update_player(chat_id, DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete))
+
+
 def reset_states(bot, chat_id: int):
     DBAccessor.update_player(_id=chat_id,
                              update=DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO))

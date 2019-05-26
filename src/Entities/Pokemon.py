@@ -340,8 +340,8 @@ def build_pokemon_trade_image(pokemon_going_sprite, pokemon_coming_sprite):
     background = Image.open(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + filepath)
     background.thumbnail((int(width_total), int(height_total)), Image.ANTIALIAS)
 
-    background.paste(image_going, (int(width_total * 0.18), int(height_total * 0.25)), mask=alpha_going)
-    background.paste(image_coming, (int(width_total * 0.50), int(height_total * 0.8)), mask=alpha_coming)
+    background.paste(image_going, (int(width_total * 0.18), int(height_total * 0.2)), mask=alpha_going)
+    background.paste(image_coming, (int(width_total * 0.5), int(height_total * 0.08)), mask=alpha_coming)
     return background
 
 

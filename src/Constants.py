@@ -13,6 +13,7 @@ class MESSAGE_TYPES:
     TRADE_CHOOSE_MSG = 'trade_choose_msg'
     TRADE_CONFIRM_MSG = 'trade_confirm_msg'
     TRADE_INVITE_MSG = 'trade_confirm_msg'
+    TRADE_STATUS_MSG = 'trade_status_msg'
     POKE_DISPLAY_MSG = 'poke_display_msg'
     DUEL_FRIENDLIST_MSG = 'duel_friendlist_msg'
     DUEL_STATUS_MSG = 'duel_status_msg'
@@ -85,8 +86,14 @@ class CALLBACK:
     def TRADE_INVITE_DENY(chat_id: int):
         return 'trade-invite-deny%' + str(chat_id)
 
+    @staticmethod
+    def TRADE_NOTIFY(chat_id: int):
+        return 'trade-notify%' + str(chat_id)
+
+    TRADE_POKELIST = 'trade-pokelist'
     TRADE_ACCEPT = 'trade-accept'
     TRADE_ABORT = 'trade-abort'
+    TRADE_STATUS = 'trade-status'
 
     # DUEL CALLBACKS
     DUEL_START_NOFRIEND = 'duel-start-nofriend'

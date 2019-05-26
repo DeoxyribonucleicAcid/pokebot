@@ -36,7 +36,10 @@ class CALLBACK_HANDLER:
                 'pokemon': PokeDisplayBuilder.build_poke_display
             },
             'abort': TradeMessageBuilder.trade_abort,
-            'accept': TradeMessageBuilder.trade_accept
+            'accept': TradeMessageBuilder.trade_accept,
+            'status': TradeMessageBuilder.trade_status,
+            'notify': TradeMessageBuilder.notify_partner,
+            'pokelist': TradeMessageBuilder.build_pokelist_for_trade
         },
         'duel': {
             'start': {
