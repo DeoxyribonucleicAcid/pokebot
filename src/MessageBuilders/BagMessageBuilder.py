@@ -1,3 +1,4 @@
+import logging
 import time
 from io import BytesIO
 
@@ -33,6 +34,10 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
     keys = []
     for pokemon_id in page_list:
         pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
+        if pokemon is None:
+            logging.error('Pokemon with id {} None!'.format(pokemon))
+            player.pokemon.remove(pokemon_id)
+            DBAccessor.update_player(chat_id, DBAccessor.get_update_query_player(player.pokemon))
         keys.append([InlineKeyboardButton(text=pokemon.name,
                                           callback_data=Constants.CALLBACK.POKE_DISPLAY_CONFIG(trade_mode=trade_mode,
                                                                                                page_number=page_number,

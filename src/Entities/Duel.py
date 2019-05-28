@@ -25,7 +25,7 @@ class DuelAction:
     def serialize(self):
         return {'action_type': None,
                 'source': self.source,
-                'initiative': self.initiative if self.initiative is not None else None,
+                'initiative': self.initiative.value if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -65,18 +65,16 @@ class DuelAction:
 
 
 class ActionAttack(DuelAction):
-    def set_source(self, bot, participant, attack_id, initiative):
+    def set_source(self, bot, participant, attack_id, initiative=None):
+        attack_id = int(attack_id)
         poke = DBAccessor.get_pokemon_by_id(participant.pokemon)
-        move = next((x for x in poke.moves if x.move_id == attack_id),
-                    None)
+        move = next((x for x in poke.moves if x.move_id == attack_id), None)
         if move is not None:
             if move.target != 'selected-pokemon':
                 raise NotImplementedError('Move type is not known')
             self.completed = True
             self.source = move.id
             self.initiative = poke.speed
-
-        raise NotImplementedError  # TODO
 
     def perform(self, bot, participant, target_id):
         move = Move.Move.get_move(Move.Move.get_move_url(self.source))
@@ -102,7 +100,7 @@ class ActionAttack(DuelAction):
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.ATTACK,
                 'source': self.source,
-                'initiative': self.initiative if self.initiative is not None else None,
+                'initiative': self.initiative.value if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -111,7 +109,7 @@ class ActionExchangePoke(DuelAction):
     def set_source(self, bot, participant, pokemon_id, initiative=None):
         pokemon_id = int(pokemon_id)
         player = DBAccessor.get_player(participant.player_id)
-        champion_id = next((x for x in player.pokemon_team if x == pokemon_id), None)
+        champion_id = next((x for x in participant.team if x == pokemon_id), None)
         if champion_id is not None:
             champion = DBAccessor.get_pokemon_by_id(champion_id)
             self.source = champion.poke_id
@@ -122,20 +120,19 @@ class ActionExchangePoke(DuelAction):
                              text='You nominated {} as your champion!'.format(champion.name))
 
     def perform(self, bot, participant, target_id):
-        player = DBAccessor.get_player(int(self.target))
         # TODO: Switch to ID
-        participant.pokemon = target_id if target_id in player.pokemon_team else None
+        participant.pokemon = self.source if self.source in participant.team else None
 
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,
                 'source': self.source,
-                'initiative': self.initiative if self.initiative is not None else None,
+                'initiative': self.initiative.value if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
 
 class ActionUseItem(DuelAction):
-    def set_source(self, bot, participant, item_id, initiative):
+    def set_source(self, bot, participant, item_id, initiative=None):
         raise NotImplementedError  # TODO
 
     def perform(self, bot, participant, target_id):
@@ -144,7 +141,7 @@ class ActionUseItem(DuelAction):
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.USEITEM,
                 'source': self.source,
-                'initiative': self.initiative if self.initiative is not None else None,
+                'initiative': self.initiative.value if self.initiative is not None else None,
                 'target': self.target,
                 'completed': self.completed}
 
@@ -285,3 +282,12 @@ class Duel(EventType):
 
     def get_counterpart_by_id(self, participant_id: int):
         return self.participant_1 if participant_id != self.participant_1.player_id else self.participant_2
+
+    def update_participant(self, chat_id):
+        if chat_id == self.participant_1.player_id:
+            query = DBAccessor.get_update_query_duel(participant_1=self.participant_1)
+        elif chat_id == self.participant_2.player_id:
+            query = DBAccessor.get_update_query_duel(participant_2=self.participant_2)
+        else:
+            raise AttributeError('Duel Participants incorrect: Duel_id: {}'.format(self.event_id))
+        DBAccessor.update_duel(self.event_id, query)

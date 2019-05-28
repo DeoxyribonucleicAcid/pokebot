@@ -152,10 +152,12 @@ def get_update_query_player(chat_id=None, username=None, friendlist=None, items=
     return query
 
 
-def get_update_query_duel(participant_1: Duel.Participant = None, participant_2: Duel.Participant = None):
+def get_update_query_duel(participant_1: Duel.Participant = None, participant_2: Duel.Participant = None,
+                          round: int = None):
     query = {'$set': {}}
     if participant_1 is not None: query['$set']['participant_1'] = participant_1.serialize()
     if participant_2 is not None: query['$set']['participant_2'] = participant_2.serialize()
+    if round is not None: query['$set']['round'] = round
     return query
 
 
@@ -172,7 +174,7 @@ def get_update_query_pokemon(
 
     if pokedex_id is not None: query['$set']['pokedex_id'] = pokedex_id
     if name is not None: query['$set']['name'] = name
-    if moves is not None: query['$set']['moves'] = [i for i in moves]
+    if moves is not None: query['$set']['moves'] = [i.serialize() for i in moves]
     if health is not None: query['$set']['health'] = health
     if level is not None: query['$set']['level'] = level
     if types is not None: query['$set']['types'] = [i for i in types]

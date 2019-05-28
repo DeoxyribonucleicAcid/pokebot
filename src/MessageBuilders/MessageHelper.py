@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import telegram
@@ -92,3 +93,10 @@ def clear_duels(bot, update):
     for duel_id in player.duels:
         DuelMessageBuilder.abort_duel(bot=bot, chat_id=player.chat_id, duel_id=duel_id)
     bot.send_message(chat_id=player.chat_id, text='Aborted all your duels')
+
+
+def shorten_logfile():
+    logfile_path = os.path.join('.', '.log')[1:]
+    logfile_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__) )+ '.log')
+    #if os.path.getsize(logfile_path) < 100 * 1024:
+    #    os.remove(file)

@@ -8,7 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 
 import Constants
 import DBAccessor
-from Entities import Message, Duel, Pokemon, Move
+from Entities import Message, Duel, Pokemon
 from MessageBuilders import MessageHelper
 
 
@@ -21,7 +21,7 @@ def build_current_duel_status(bot, chat_id, duel: Duel.Duel):
     img.save(bio_player, 'PNG')
     bio_player.seek(0)
     keys = [[InlineKeyboardButton(text='Attack', callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK)],
-            [InlineKeyboardButton(text='Exchange Pokemon', callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON)],
+            [InlineKeyboardButton(text='Nominate Champion', callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON)],
             [InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)]]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
 
@@ -44,7 +44,7 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
     if duel is not None:
         bot.send_message(chat_id=player.chat_id,
                          text='You are already dueling with {}'.format(friend.username))
-        build_current_duel_status(bot=bot, chat_id=chat_id, duel=duel)
+        build_msg_duel_active(bot=bot, chat_id=chat_id, duel_id=duel.event_id)
     else:
         keys = [[
             InlineKeyboardButton(text='Yes', callback_data=Constants.CALLBACK.DUEL_INVITE_ACCEPT(player.chat_id)),
@@ -97,11 +97,6 @@ def abort_duel(bot, chat_id, duel_id):
 def build_msg_duel_invite_accept(bot, chat_id, init_player_id):
     player = DBAccessor.get_player(int(chat_id))
     friend = DBAccessor.get_player(int(init_player_id))
-    if len(friend.pokemon_team) < 3:
-        bot.send_message(chat_id=player.chat_id,
-                         text='Your Pokemon-Team is too small for a duel.'
-                              ' Choose at least 3 Champions before continuing your duel!')
-        return
     new_duel = Duel.Duel(
         participant_1=Duel.Participant(player_id=player.chat_id, action=Duel.ActionExchangePoke()),
         participant_2=Duel.Participant(player_id=friend.chat_id, action=Duel.ActionExchangePoke()), round=0)
@@ -118,13 +113,20 @@ def build_msg_duel_invite_accept(bot, chat_id, init_player_id):
 
 
 def start_duel(bot, chat_id, event_id):
-    keys = [[InlineKeyboardButton(text='Default', callback_data=Constants.CALLBACK.DUEL_START_DEFAULT(event_id)),
-             InlineKeyboardButton(text='Custom', callback_data=Constants.CALLBACK.DUEL_START_CUSTOM(event_id))]]
+    keys = [[]]
+    player = DBAccessor.get_player(chat_id)
+    if len(player.pokemon_team) >= Constants.DUEL_MIN_POKEMON_PER_TEAM:
+        keys[0].append(
+            InlineKeyboardButton(text='Default', callback_data=Constants.CALLBACK.DUEL_START_DEFAULT(event_id)))
+        text = 'Do you want to use your default team or a custom one?'
+    else:
+        text = 'Your default team is not big enough, set up a custom team!'
+    keys[0].append(
+        InlineKeyboardButton(text='Custom', callback_data=Constants.CALLBACK.DUEL_START_CUSTOM(event_id)))
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     msg = bot.send_message(chat_id=chat_id,
-                           text='Do you want to use your default team or a custom one?',
+                           text=text,
                            reply_markup=reply_markup)
-    player = DBAccessor.get_player(chat_id)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_TEAM_DEFAULT_CUSTOM,
                         _time_sent=time.time()))
@@ -160,6 +162,8 @@ def calc_round(bot, duel_id: int):
     poke_part_2_id = duel.participant_1.pokemon
     if duel.participant_1.action.initiative == duel.participant_2.action.initiative:
         # handle simultaneous actions
+        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
         pass
     elif duel.participant_1.action.initiative < duel.participant_2.action.initiative:
         # handle participant 1 first
@@ -171,20 +175,19 @@ def calc_round(bot, duel_id: int):
         # TODO: Target has to be known to action -> no needed as parameter
         duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
         duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+    duel.participant_1.action, duel.participant_2.action = None, None
+    duel.round += 1
+
+    DBAccessor.update_duel(duel_id, update=DBAccessor.get_update_query_duel(duel.participant_1, duel.participant_2))
+    return
 
 
 def build_msg_duel_action_chosen_source(bot, chat_id, duel_id, source_id):
+    duel_id = int(duel_id)
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
     duel = DBAccessor.get_duel_by_id(int(duel_id))
-    if chat_id == duel.participant_1.player_id:
-        duel.participant_1.action.set_source(bot, duel.participant_1, source_id)
-        query = DBAccessor.get_update_query_duel(participant_1=duel.participant_1)
-    elif chat_id == duel.participant_2.player_id:
-        duel.participant_2.action.set_source(bot, duel.participant_2, source_id)
-        query = DBAccessor.get_update_query_duel(participant_2=duel.participant_2)
-    else:
-        raise AttributeError('Duel Participants incorrect: Duel_id: {}'.format(duel.event_id))
-    DBAccessor.update_duel(_id=duel.event_id, update=query)
+    duel.get_participant_by_id(chat_id).action.set_source(bot, duel.get_participant_by_id(chat_id), source_id)
+    duel.update_participant(chat_id)
     if duel.participant_1.action.completed and duel.participant_2.action.completed:
         calc_round(bot, duel_id)
 
@@ -207,24 +210,30 @@ def build_msg_duel_action_chosen_target(bot, chat_id, duel_id, target_id):
 
 def build_msg_duel_action_pokemon(bot, chat_id, duel_id):
     player = DBAccessor.get_player(int(chat_id))
-    if len(player.pokemon_team) < 3:
+    duel = DBAccessor.get_duel_by_id(int(duel_id))
+    if duel is None:
+        raise ValueError('Duel {} is None! ChatId: {}'.format(duel_id, chat_id))
+    if duel.get_participant_by_id(chat_id) is not None and player.pokemon_team is not None and len(
+            player.pokemon_team) >= Constants.DUEL_MIN_POKEMON_PER_TEAM:
+        duel.get_participant_by_id(chat_id).team = player.pokemon_team
+        duel.update_participant(chat_id)
+    if duel.get_participant_by_id(chat_id).team is None or len(duel.get_participant_by_id(chat_id).team) < 3:
         bot.send_message(chat_id=player.chat_id,
                          text='Your pokemon-team is too small. '
-                              'This should not happen at this time. Duel will be aborted!')
-        duel = DBAccessor.get_duel_by_id(int(duel_id))
-        friend = DBAccessor.get_player(duel.participant_1.player_id if duel.participant_1
-                                       .player_id is not player.chat_id else duel.participant_2.player_id)
-        bot.send_message(chat_id=friend.chat_id,
-                         text='An error occurred. Aborted your duel with {}!'.format(player.username))
-        bot.send_message(chat_id=player.chat_id,
-                         text='Aborted your duel with {}! You loose!'.format(friend.username))
-        abort_duel(bot=bot, chat_id=chat_id, duel_id=duel_id)
+                              'This should not happen at this time. Blame the devs and choose again!!')
+        send_team_selection(bot, chat_id, duel_id, 0)
         return
+    if duel.get_participant_by_id(chat_id).action is None:
+        duel.get_participant_by_id(chat_id).action = Duel.ActionExchangePoke()
+        duel.update_participant(chat_id)
     build_choose_from_team(bot, chat_id, duel_id)
 
 
 def build_msg_duel_action_attack(bot, chat_id, duel_id):
     duel = DBAccessor.get_duel_by_id(int(duel_id))
+    if duel.get_participant_by_id(chat_id).action is None:
+        duel.get_participant_by_id(chat_id).action = Duel.ActionAttack()
+        duel.update_participant(chat_id)
     participant_player = duel.get_participant_by_id(chat_id)
     # participant = duel.get_counterpart_by_id(chat_id)
     poke1 = DBAccessor.get_pokemon_by_id(participant_player.pokemon)
@@ -240,7 +249,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
                              .format(duel.event_id, participant_player.pokemon))
 
     keys = []
-    for m in poke1.moves:
+    for move in poke1.moves:
         # id
         # accuracy
         # power
@@ -249,7 +258,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
         # target
         # type.name
         # names[find language.name == 'en'].name
-        move = Move.Move.get_move(m['url'])
+        # move = Move.Move.get_move(m['url'])
         keys.append([InlineKeyboardButton(text='{} Acc:{} Pow:{} Prio:{}'.format(move.name, move.accuracy,
                                                                                  move.power, move.priority),
                                           callback_data=Constants.CALLBACK.DUEL_ACTION_CHOSEN(event_id=duel.event_id,
@@ -283,6 +292,8 @@ def build_msg_duel_action_item(bot, chat_id, duel_id):
 
 def build_msg_duel_active(bot, chat_id, duel_id):
     duel = DBAccessor.get_duel_by_id(int(duel_id))
+    if duel is not None and duel.participant_1.action is not None and duel.participant_2.action is not None and duel.participant_1.action.completed and duel.participant_2.action.completed:
+        calc_round(bot, duel_id)
 
     if duel.get_participant_by_id(chat_id).team is not None:
         poke_player = [DBAccessor.get_pokemon_by_id(i) for i in duel.get_participant_by_id(chat_id).team]
@@ -296,28 +307,78 @@ def build_msg_duel_active(bot, chat_id, duel_id):
         champion_opponent = DBAccessor.get_pokemon_by_id(duel.get_counterpart_by_id(chat_id).pokemon)
     else:
         champion_opponent = None
+    if duel.get_participant_by_id(chat_id).pokemon is not None:
+        # Display Champion first
+        for i, poke in enumerate(poke_player):
+            if poke.poke_id == int(duel.get_participant_by_id(chat_id).pokemon):
+                poke_player[0], poke_player[i] = poke_player[i], poke_player[0]
+                break
     img = Pokemon.build_pokemon_duel_info_image(poke_player, champion_player, champion_opponent)
     keys = [
         [InlineKeyboardButton(text='Surrender and abort duel',
                               callback_data=Constants.CALLBACK.DUEL_ABORT(event_id=duel.event_id))]
     ]
 
-    keys = [[InlineKeyboardButton(text='Attack', callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK)],
-            [InlineKeyboardButton(text='Exchange Pokemon', callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON)],
-            [InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)]]
-
+    # keys = [[InlineKeyboardButton(text='Attack', callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK)],
+    #         [InlineKeyboardButton(text='Exchange Pokemon', callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON)],
+    #         [InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)]]
+    caption = ''
     if duel.get_participant_by_id(chat_id).team is None:
         # TODO: Should this happen? Probably the team has to be chosen at this point already.
         keys.append([InlineKeyboardButton(text='Choose Team',
                                           callback_data=Constants.CALLBACK.DUEL_TEAM_PAGE(duel.event_id, 0))])
+    elif duel.get_participant_by_id(chat_id).action is None:
+        if duel.get_participant_by_id(chat_id).team is None or len(
+                duel.get_participant_by_id(chat_id).team) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
+            keys.append(
+                InlineKeyboardButton(text='Set up team',
+                                     callback_data=Constants.CALLBACK.DUEL_START_CUSTOM(duel.event_id)))
+            caption += 'You have to choose a team first!'
+        else:
+            if duel.get_participant_by_id(chat_id).pokemon is not None:
+                keys.append([InlineKeyboardButton(text='Attack', callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK(
+                    event_id=duel_id))])
+            keys.append([InlineKeyboardButton(text='Nominate Champion',
+                                              callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON(
+                                                  event_id=duel.event_id))])
+            keys.append([InlineKeyboardButton(text='Use Item',
+                                              callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM(event_id=duel_id))])
     else:
-        if duel.get_participant_by_id(chat_id).pokemon is not None:
-            keys.append([InlineKeyboardButton(text='Attack', callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK)])
-        keys.append([InlineKeyboardButton(text='Exchange Pokemon',
-                                          callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON)])
-        keys.append([InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)])
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
+        keys.append([InlineKeyboardButton(text='Remind {} to choose'.format(
+            DBAccessor.get_player(duel.get_counterpart_by_id(chat_id).player_id).username),
+            callback_data=Constants.CALLBACK.DUEL_NOTIFY(event_id=duel_id))])
+        if type(duel.get_participant_by_id(chat_id).action) == Duel.ActionAttack:
+            caption += '\nYou chose to attack'
+            if duel.get_participant_by_id(chat_id).action.source is None and not duel.get_participant_by_id(
+                    chat_id).action.completed:
+                keys.append([InlineKeyboardButton(text='Choose Attack',
+                                                  callback_data=Constants.CALLBACK.DUEL_ACTION_ATTACK(
+                                                      event_id=duel.event_id))])
+                caption += ' but you have not chosen an attack yet!'
 
+        elif type(duel.get_participant_by_id(chat_id).action) == Duel.ActionExchangePoke:
+            if duel.get_participant_by_id(chat_id).action.source is None and not duel.get_participant_by_id(
+                    chat_id).action.completed:
+                keys.append([InlineKeyboardButton(text='Nominate Champion',
+                                                  callback_data=Constants.CALLBACK.DUEL_ACTION_POKEMON(
+                                                      event_id=duel.event_id))])
+                caption += '\nYou chose to switch your champion but you have not chosen a champion yet!'
+            else:
+                caption += '\nYou chose to switch to {} as champion'.format(
+                    DBAccessor.get_pokemon_by_id(duel.get_participant_by_id(chat_id).action.source).name)
+
+        elif type(duel.get_participant_by_id(chat_id).action) == Duel.ActionUseItem:
+            caption += '\nYou chose to use an item'
+            if duel.get_participant_by_id(chat_id).action.source is None and not duel.get_participant_by_id(
+                    chat_id).action.completed:
+                keys.append([InlineKeyboardButton(text='Use Item',
+                                                  callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM(
+                                                      event_id=duel.event_id))])
+                caption += ' but you have not chosen a champion yet!'
+
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
+    player = DBAccessor.get_player(chat_id)
+    MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.DUEL_STATUS_MSG)
     if img is not None:
         bio = BytesIO()
         bio.name = 'image_duel_info_' + str(chat_id) + '.png'
@@ -325,14 +386,14 @@ def build_msg_duel_active(bot, chat_id, duel_id):
         bio.seek(0)
         msg = bot.send_photo(chat_id=chat_id,
                              photo=bio,
-                             caption='Current Status',
-                             reply_markup=reply_markup)
+                             caption='Current Status' + caption,
+                             reply_markup=reply_markup,
+                             parse_mode=ParseMode.MARKDOWN)
     else:
         msg = bot.send_message(chat_id=chat_id,
                                text='Neither have you chosen your Pokemon team for '
                                     'this duel nor has your opponent nominated a champion.',
                                reply_markup=reply_markup)
-    player = DBAccessor.get_player(chat_id)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_STATUS_MSG, _time_sent=time.time()))
     query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
@@ -340,9 +401,10 @@ def build_msg_duel_active(bot, chat_id, duel_id):
 
 
 def build_choose_from_team(bot, chat_id, duel_id):
+    duel_id = int(duel_id)
     player = DBAccessor.get_player(chat_id)
     duel = DBAccessor.get_duel_by_id(int(duel_id))
-    friend_id = duel.participant_1.player_id if duel.participant_1.player_id is not chat_id else duel.participant_2.player_id
+    friend_id = duel.participant_1.player_id if duel.participant_1.player_id != chat_id else duel.participant_2.player_id
     friend = DBAccessor.get_player(int(friend_id))
     # If the Player should be informed about other participant's poke team
     # caption=''
@@ -352,17 +414,17 @@ def build_choose_from_team(bot, chat_id, duel_id):
         bot.send_message(chat_id=chat_id,
                          text='I have not met you yet. Want to be a Pok\xe9mon trainer? Type /catch.')
         return
-    elif len(player.pokemon_team) is 0 or None:
+    elif len(duel.get_participant_by_id(chat_id).team) is 0 or duel.get_participant_by_id(chat_id).team is None:
         bot.send_message(chat_id=chat_id,
                          text='Your Pok\xe9mon team is empty. Choose candidates from your /bag.')
         return
-    elif len(player.pokemon_team) > 6:
+    elif len(duel.get_participant_by_id(chat_id).team) > 6:
         bot.send_message(chat_id=chat_id,
                          text='You somehow managed to add more than 6 Pok\xe9mon to your team. Outrageous! '
                               'Please remove some :) (and blame the devs)')
         return
     pokemon_sprite_list, keys = [], []
-    for pokemon_id in player.pokemon_team:
+    for pokemon_id in duel.get_participant_by_id(chat_id).team:
         pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
         keys.append([InlineKeyboardButton(text='{} Level:{} Health:{}/{}'.format(pokemon.name, pokemon.level,
                                                                                  pokemon.health, pokemon.max_health),
@@ -568,16 +630,31 @@ def accept_team_selection(bot, chat_id, duel_id):
         bot.delete_message(chat_id=chat_id, message_id=duel.get_participant_by_id(chat_id).team_selection._id)
     except telegram.error.BadRequest as e:
         logging.error(e)
-    player.messages_to_delete.remove(duel.get_participant_by_id(chat_id).team_selection._id)
+    if duel.get_participant_by_id(chat_id).team_selection._id in player.messages_to_delete:
+        player.messages_to_delete.remove(duel.get_participant_by_id(chat_id).team_selection._id)
     duel.get_participant_by_id(chat_id).team_selection = None
 
     update_player = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
-    if chat_id is duel.participant_1.player_id:
+    if chat_id == duel.participant_1.player_id:
         update_duel = DBAccessor.get_update_query_duel(participant_1=duel.participant_1)
-    elif chat_id is duel.participant_2.player_id:
+    elif chat_id == duel.participant_2.player_id:
         update_duel = DBAccessor.get_update_query_duel(participant_2=duel.participant_2)
     else:
         raise ValueError('Participant not found! Chat_id: {} Event_id: {} '.format(chat_id, duel_id))
     DBAccessor.update_player(_id=player.chat_id, update=update_player)
     DBAccessor.update_duel(_id=duel_id, update=update_duel)
     build_msg_duel_action_pokemon(bot=bot, chat_id=chat_id, duel_id=duel_id)
+
+
+def notify_opponent(bot, chat_id, duel_id):
+    duel = DBAccessor.get_duel_by_id(int(duel_id))
+    if duel is None:
+        bot.send_message(chat_id=duel.get_counterpart_by_id(chat_id).player_id,
+                         text='The fight is over, go home\n(or start a new one)')
+        MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.DUEL_STATUS_MSG)
+    msg_ping = bot.send_message(chat_id=duel.get_counterpart_by_id(chat_id).player_id,
+                                text='Your opponent for you to take action and is getting impatient.')
+    MessageHelper.append_message_to_player(duel.get_counterpart_by_id(chat_id).player_id,
+                                           message_id=msg_ping.message_id,
+                                           type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
+    build_msg_duel_active(bot, duel.get_counterpart_by_id(chat_id).player_id, duel_id)

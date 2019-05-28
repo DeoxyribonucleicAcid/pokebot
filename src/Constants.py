@@ -120,8 +120,14 @@ class CALLBACK:
     @staticmethod
     def DUEL_ACTION_POKEMON(event_id: int): return 'duel-action-pokemon%' + str(event_id)
 
-    DUEL_ACTION_ATTACK = 'duel-action-attack'
-    DUEL_ACTION_ITEM = 'duel-action-item'
+    @staticmethod
+    def DUEL_ACTION_ATTACK(event_id: int): return 'duel-action-attack%{}'.format(event_id)
+
+    @staticmethod
+    def DUEL_ACTION_ITEM(event_id: int): return 'duel-action-item%{}'.format(event_id)
+
+    @staticmethod
+    def DUEL_NOTIFY(event_id: int): return 'duel-notify%{}'.format(event_id)
 
     @staticmethod
     def DUEL_ACTIVE(event_id: int): return 'duel-active%' + str(event_id)

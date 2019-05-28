@@ -83,6 +83,9 @@ def command_handler_firendlist(bot, update):
 def command_handler_add_friend(bot, update):
     FriendlistMessageBuilder.build_add_friend_initial_message(bot=bot, chat_id=update.message.chat_id)
 
+# Keepalive
+def logfile_handler(bot, job):
+    MessageHelper.shorten_logfile()
 
 # DEBUG
 def command_handler_restart(bot, update):
@@ -154,6 +157,7 @@ def main():
     updater.start_polling()
     j = updater.job_queue
     j.run_repeating(command_handler_encounter, interval=60 * 15, first=0)
+    j.run_repeating(logfile_handler, interval=60 * 15, first=0)
 
 
 main()

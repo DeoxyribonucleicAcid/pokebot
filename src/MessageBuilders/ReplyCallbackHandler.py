@@ -60,9 +60,10 @@ class CALLBACK_HANDLER:
             },
             'active': DuelMessageBuilder.build_msg_duel_active,
             'abort': DuelMessageBuilder.abort_duel,
+            'notify': DuelMessageBuilder.notify_opponent,
             'team': {
                 'nominate': DuelMessageBuilder.nominate_team_member,
-                'page': DuelMessageBuilder.build_team_selection,
+                'page': DuelMessageBuilder.send_team_selection,
                 'abort': DuelMessageBuilder.abort_team_selection,
                 'accept': DuelMessageBuilder.accept_team_selection
             }

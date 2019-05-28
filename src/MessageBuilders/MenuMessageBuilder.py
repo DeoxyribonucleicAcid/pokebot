@@ -76,9 +76,15 @@ def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
     if duels is not None:
         for duel_id in duels:
             duel = DBAccessor.get_duel_by_id(int(duel_id))
+            if duel is None:
+                player = DBAccessor.get_player(chat_id)
+                player.duels.remove(duel_id)
+                DBAccessor.update_player(chat_id, DBAccessor.get_update_query_player(duels=player.duels))
+                continue
+            friend = DBAccessor.get_player(int(duel.get_counterpart_by_id(chat_id).player_id))
+            if friend is None: continue
             keys.append([InlineKeyboardButton(
-                text='View duel with {}'.format(DBAccessor.get_player(
-                    int(duel.get_counterpart_by_id(chat_id).player_id)).username),
+                text='View duel with {}'.format(friend.username),
                 callback_data=Constants.CALLBACK.DUEL_ACTIVE(duel.event_id))])
     text = 'Menu:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)

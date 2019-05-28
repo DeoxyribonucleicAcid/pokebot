@@ -10,6 +10,7 @@ import math
 import requests
 from PIL import Image, ImageFont, ImageDraw
 
+from Entities import Move
 from src.EichState import EichState
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class Pokemon:
         self.pokedex_id: int = pokedex_id
         self.name: str = name
         self.level: int = level
-        self.moves: List[dict] = moves if moves is not None else []
+        self.moves: List[Move.Move] = moves if moves is not None else []
         self.types: List[dict] = types if types is not None else []
         self.sprites: dict = sprites if sprites is not None else {'front': None, 'back': None}
         self.weight: int = weight
@@ -47,7 +48,7 @@ class Pokemon:
             'pokedex_id': self.pokedex_id,
             'name': self.name,
             'level': self.level,
-            'moves': self.moves,
+            'moves': [i.serialize() for i in self.moves],
             'health': self.health,
             'max_health': self.max_health,
             'types': self.types,
@@ -91,7 +92,7 @@ def deserialize_pokemon(json):
         level = None
         logging.error(e)
     try:
-        moves = json['moves']
+        moves = [Move.Move.deserialize(i) for i in json['moves']]
     except KeyError as e:
         moves = None
         logging.error(e)
@@ -231,6 +232,7 @@ def get_random_poke(poke_json, level_reference):
             possible_moves.append(move_)
     max_moves = 4 if len(possible_moves) > 4 else len(possible_moves)
     moves = random.sample(possible_moves, max_moves)
+    moves = [Move.Move.deserialize(move) for move in moves]
     pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, max_health=health, level=level,
                       types=types, sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny,
                       speed=speed, special_defense=special_defense, special_attack=special_attack,
@@ -389,7 +391,9 @@ def build_pokemon_duel_info_image(pokemon_team: List[Pokemon], champion_player: 
         images = [get_poke_image(i.sprites['front']) for i in pokemon_team]
         for i, img in enumerate(images):
             alpha = img.convert('RGBA').split()[-1]
-            if i % 2 is 0:
+            if i == 0 and champion_player is not None:
+                bg = Image.new("RGBA", (width_total, height), (30, 180, 100, 255))
+            elif i % 2 is 0:
                 bg = Image.new("RGBA", (width_total, height), (255, 247, 153, 255))
             else:
                 bg = Image.new("RGBA", (width_total, height), (226, 215, 74, 255))
