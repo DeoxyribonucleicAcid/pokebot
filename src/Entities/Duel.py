@@ -1,5 +1,6 @@
 import logging
 import random
+from enum import Enum
 from typing import List
 
 import Constants
@@ -71,9 +72,13 @@ class ActionAttack(DuelAction):
         move = next((x for x in poke.moves if x.move_id == attack_id), None)
         if move is not None:
             if move.target != 'selected-pokemon':
-                raise NotImplementedError('Move type is not known')
+                bot.send_message(chat_id=participant.player_id, text='This attack is not supported yet, '
+                                                                     'please choose another one (and blame the devs!)')
+                bot.send_message(chat_id=252269446, text='#target {}'.format(move.target))
+                return
+                # raise NotImplementedError('Move type {} is not known'.format(move.target))# specific-move
             self.completed = True
-            self.source = move.id
+            self.source = move.move_id
             self.initiative = poke.speed
 
     def perform(self, bot, participant, target_id):
@@ -90,17 +95,14 @@ class ActionAttack(DuelAction):
 
             query = DBAccessor.get_update_query_pokemon(health=target_pokemon.health)
             DBAccessor.update_pokemon(_id=target_id, update=query)
-
-            bot.send_message(chat_id=participant.player_id,
-                             text='{} did {} damage.'.format(target_pokemon.name, damage))
-            return move.power
+            return '{} retrieved {} damage.'.format(target_pokemon.name, damage)
         else:
-            return None
+            return 'Attack missed!'
 
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.ATTACK,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative.value if type(self.initiative) == Enum else self.initiative,  # FIXME
                 'target': self.target,
                 'completed': self.completed}
 
@@ -121,7 +123,13 @@ class ActionExchangePoke(DuelAction):
 
     def perform(self, bot, participant, target_id):
         # TODO: Switch to ID
+        result = '{} switches{} to {}'.format(
+            DBAccessor.get_player(participant.player_id).username,
+            ' from ' + DBAccessor.get_pokemon_by_id(
+                participant.pokemon).name if participant.pokemon is not None else '',
+            DBAccessor.get_pokemon_by_id(self.source if self.source is not None else 'None').name)
         participant.pokemon = self.source if self.source in participant.team else None
+        return result
 
     def serialize(self):
         return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,

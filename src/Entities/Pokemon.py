@@ -232,7 +232,7 @@ def get_random_poke(poke_json, level_reference):
             possible_moves.append(move_)
     max_moves = 4 if len(possible_moves) > 4 else len(possible_moves)
     moves = random.sample(possible_moves, max_moves)
-    moves = [Move.Move.deserialize(move) for move in moves]
+    moves = [Move.Move.get_move(move['url']) for move in moves]
     pokemon = Pokemon(pokedex_id=pokedex_id, name=name, moves=moves, health=health, max_health=health, level=level,
                       types=types, sprites=sprites, height=height, weight=weight, female=female, is_shiny=is_shiny,
                       speed=speed, special_defense=special_defense, special_attack=special_attack,

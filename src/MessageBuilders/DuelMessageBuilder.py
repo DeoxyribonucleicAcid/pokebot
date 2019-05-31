@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 import Constants
 import DBAccessor
 from Entities import Message, Duel, Pokemon
-from MessageBuilders import MessageHelper
+from MessageBuilders import MessageHelper, MenuMessageBuilder
 
 
 def build_current_duel_status(bot, chat_id, duel: Duel.Duel):
@@ -108,6 +108,15 @@ def build_msg_duel_invite_accept(bot, chat_id, init_player_id):
     query_friend = DBAccessor.get_update_query_player(duels=friend.duels)
     DBAccessor.update_player(_id=player.chat_id, update=query_player)
     DBAccessor.update_player(_id=friend.chat_id, update=query_friend)
+    if player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG) is not None or len(
+            player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)) > 0:
+        MenuMessageBuilder.update_menu_message(bot, chat_id,
+                                               player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id)
+    if friend.get_messages(Constants.MESSAGE_TYPES.MENU_MSG) is not None or len(
+            friend.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)) > 0:
+        MenuMessageBuilder.update_menu_message(bot, init_player_id,
+                                               friend.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id)
+    bot.send_message(chat_id=init_player_id, text='{} accepted the challenge!'.format(player.username))
     start_duel(bot=bot, chat_id=player.chat_id, event_id=new_duel.event_id)
     start_duel(bot=bot, chat_id=friend.chat_id, event_id=new_duel.event_id)
 
@@ -124,9 +133,7 @@ def start_duel(bot, chat_id, event_id):
     keys[0].append(
         InlineKeyboardButton(text='Custom', callback_data=Constants.CALLBACK.DUEL_START_CUSTOM(event_id)))
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
-    msg = bot.send_message(chat_id=chat_id,
-                           text=text,
-                           reply_markup=reply_markup)
+    msg = bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_TEAM_DEFAULT_CUSTOM,
                         _time_sent=time.time()))
@@ -162,23 +169,27 @@ def calc_round(bot, duel_id: int):
     poke_part_2_id = duel.participant_1.pokemon
     if duel.participant_1.action.initiative == duel.participant_2.action.initiative:
         # handle simultaneous actions
-        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
-        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
+        result1 = duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+        result2 = duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
         pass
     elif duel.participant_1.action.initiative < duel.participant_2.action.initiative:
         # handle participant 1 first
         # TODO: Target has to be known to action -> no needed as parameter
-        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
-        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
+        result1 = duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+        result2 = duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
     else:
         # handle participant 2 first
         # TODO: Target has to be known to action -> no needed as parameter
-        duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
-        duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
+        result1 = duel.participant_2.action.perform(bot, duel.participant_2, duel.participant_2.action.target)
+        result2 = duel.participant_1.action.perform(bot, duel.participant_1, duel.participant_1.action.target)
     duel.participant_1.action, duel.participant_2.action = None, None
     duel.round += 1
 
     DBAccessor.update_duel(duel_id, update=DBAccessor.get_update_query_duel(duel.participant_1, duel.participant_2))
+    bot.send_message(chat_id=duel.participant_1.player_id, text=result1 + '\n' + result2)
+    bot.send_message(chat_id=duel.participant_2.player_id, text=result1 + '\n' + result2)
+    build_msg_duel_active(bot, chat_id=duel.participant_1.player_id, duel_id=duel.event_id)
+    build_msg_duel_active(bot, chat_id=duel.participant_2.player_id, duel_id=duel.event_id)
     return
 
 
@@ -186,6 +197,7 @@ def build_msg_duel_action_chosen_source(bot, chat_id, duel_id, source_id):
     duel_id = int(duel_id)
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG)
     duel = DBAccessor.get_duel_by_id(int(duel_id))
+
     duel.get_participant_by_id(chat_id).action.set_source(bot, duel.get_participant_by_id(chat_id), source_id)
     duel.update_participant(chat_id)
     if duel.participant_1.action.completed and duel.participant_2.action.completed:
@@ -545,18 +557,22 @@ def build_team_selection(bot, chat_id, duel_id, page_number):
     page_list = player.pokemon[list_start:list_end]
     keys = []
     checkmark = emojize(":white_check_mark:", use_aliases=True)
+    skeleton = emojize(":skeleton:", use_aliases=True)
     for pokemon_id in page_list:
         pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
-        keys.append([InlineKeyboardButton(
-            text=checkmark + ' ' + pokemon.name + ' ' + checkmark if duel.get_participant_by_id(
-                chat_id).team is not None and pokemon_id in duel.get_participant_by_id(
-                chat_id).team else pokemon.name,
-            callback_data=Constants.CALLBACK.DUEL_TEAM_NOMINATE(
-                event_id=duel_id,
-                page_number=page_number,
-                poke_id=pokemon_id
-            ))
-        ])
+        if pokemon.health > 0:
+            keys.append([InlineKeyboardButton(
+                text=checkmark + ' ' + pokemon.name + ' ' + checkmark if duel.get_participant_by_id(
+                    chat_id).team is not None and pokemon_id in duel.get_participant_by_id(
+                    chat_id).team else pokemon.name,
+                callback_data=Constants.CALLBACK.DUEL_TEAM_NOMINATE(
+                    event_id=duel_id,
+                    page_number=page_number,
+                    poke_id=pokemon_id
+                ))
+            ])
+        else:
+            keys.append([InlineKeyboardButton(text=skeleton + ' ' + pokemon.name + ' ' + skeleton)])
         pokemon_sprite_list.append(pokemon.sprites['front'])
     image = Pokemon.build_pokemon_bag_image(pokemon_sprite_list)
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id, type=Constants.MESSAGE_TYPES.POKE_DISPLAY_MSG)

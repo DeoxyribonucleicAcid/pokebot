@@ -93,11 +93,13 @@ def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
 
 def toggle_encounter(bot, chat_id):
     player = DBAccessor.get_player(chat_id)
-    menu_msg_id = player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id
     MessageHelper.delete_messages_by_type(bot=bot, chat_id=chat_id,
                                           type=Constants.MESSAGE_TYPES.MENU_INFO_MSG)
     if player.encounters:
         ToggleCatchMessageBuilder.build_no_catch_message(bot=bot, chat_id=chat_id)
     else:
         ToggleCatchMessageBuilder.build_catch_message(bot=bot, chat_id=chat_id)
-    update_menu_message(bot, chat_id, menu_msg_id)
+    if player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG) is not None or len(
+            player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)) > 0:
+        menu_msg_id = player.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id
+        update_menu_message(bot, chat_id, menu_msg_id)
