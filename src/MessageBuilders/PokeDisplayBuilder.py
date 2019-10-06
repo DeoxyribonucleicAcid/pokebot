@@ -93,7 +93,8 @@ def poke_change_name(bot, chat_id, new_name):
     query = DBAccessor.get_update_query_pokemon(name=new_name)
     DBAccessor.update_pokemon(_id=pokemon.poke_id, update=query)
     build_poke_display(bot=bot, chat_id=chat_id, trade_mode=False, page_num=0, poke_id=pokemon.poke_id)
-    query = DBAccessor.get_update_query_player(edit_pokemon_id=None)
+    query = DBAccessor.get_update_query_player(nc_msg_state=Constants.NC_MSG_States.INFO,
+                                               edit_pokemon_id=None)
     DBAccessor.update_player(_id=chat_id, update=query)
 
 

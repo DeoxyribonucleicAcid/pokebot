@@ -74,17 +74,20 @@ class ActionAttack(DuelAction):
             if move.target != 'selected-pokemon':
                 bot.send_message(chat_id=participant.player_id, text='This attack is not supported yet, '
                                                                      'please choose another one (and blame the devs!)')
+                # FIXME
                 bot.send_message(chat_id=252269446, text='#target {}'.format(move.target))
-                return
+                # return
                 # raise NotImplementedError('Move type {} is not known'.format(move.target))# specific-move
             self.completed = True
             self.source = move.move_id
             self.initiative = poke.speed
 
+    # FIXME Target is None
     def perform(self, bot, participant, target_id):
         move = Move.Move.get_move(Move.Move.get_move_url(self.source))
         target_pokemon = DBAccessor.get_pokemon_by_id(target_id)
-        if random.random() > move.accuracy / 100:
+
+        if move.accuracy is None or random.random() > move.accuracy / 100:
             if target_pokemon.health - move.power <= 0:
                 # Pokemon sleep now
                 damage = target_pokemon.health

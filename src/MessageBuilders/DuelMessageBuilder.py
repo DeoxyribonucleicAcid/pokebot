@@ -45,6 +45,17 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
         bot.send_message(chat_id=player.chat_id,
                          text='You are already dueling with {}'.format(friend.username))
         build_msg_duel_active(bot=bot, chat_id=chat_id, duel_id=duel.event_id)
+    elif len(player.pokemon_team) + len(player.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
+        bot.send_message(chat_id=chat_id,
+                         text='You have not enough Pok\xe9mon to put a team for a duel. Go on catching!')
+        return
+    elif len(friend.pokemon_team) + len(friend.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
+        bot.send_message(chat_id=friend_id,
+                         text='Your friend {} challenged you to a duel, but you have not enough '
+                              'Pok\xe9mon to put a team for a duel. Go on catching!'.format(player.username))
+        bot.send_message(chat_id=chat_id,
+                         text='Sadly, {} has not enough Pok\xe9mon to put a team for a duel.'.format(friend.username))
+        return
     else:
         keys = [[
             InlineKeyboardButton(text='Yes', callback_data=Constants.CALLBACK.DUEL_INVITE_ACCEPT(player.chat_id)),
@@ -128,6 +139,10 @@ def start_duel(bot, chat_id, event_id):
         keys[0].append(
             InlineKeyboardButton(text='Default', callback_data=Constants.CALLBACK.DUEL_START_DEFAULT(event_id)))
         text = 'Do you want to use your default team or a custom one?'
+    elif len(player.pokemon_team) + len(player.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
+        bot.send_message(chat_id=chat_id,
+                         text='You have not enough Pok\xe9mon to put a team for a duel. Go on catching!')
+        return
     else:
         text = 'Your default team is not big enough, set up a custom team!'
     keys[0].append(

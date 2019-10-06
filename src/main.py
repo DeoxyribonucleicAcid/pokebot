@@ -6,7 +6,7 @@ import MessageBuilder as MessageBuilder
 import setup as setup
 from MessageBuilders import ToggleCatchMessageBuilder, EncounterMessageBuilder, BagMessageBuilder, \
     ItemBagMessageBuilder, TradeMessageBuilder, MenuMessageBuilder, ReplyCallbackHandler, \
-    UpdateUsernameHandler, FriendlistMessageBuilder, NoCommandMessageBuilder, MessageHelper
+    UpdateUsernameHandler, FriendlistMessageBuilder, NoCommandMessageBuilder, MessageHelper, ChangeLanguageHandler
 from src.EichState import EichState
 
 
@@ -68,12 +68,20 @@ def command_handler_menu(bot, update):
     MenuMessageBuilder.send_menu_message(bot=bot, update=update)
 
 
+def command_handler_settings(bot, update):
+    MenuMessageBuilder.send_settings_menu(bot=bot, update=update)
+
+
 def callback_handler(bot, update):
     ReplyCallbackHandler.process_callback(bot=bot, update=update)
 
 
 def command_handler_update_username(bot, update):
     UpdateUsernameHandler.update_username(bot=bot, update=update)
+
+
+def command_handler_change_language(bot, update):
+    ChangeLanguageHandler.send_lang_menu(bot=bot, chat_id=update.message.chat_id)
 
 
 def command_handler_firendlist(bot, update):
@@ -128,8 +136,10 @@ def main():
     bag_handler = CommandHandler('bag', callback=command_handler_bag)
     items_handler = CommandHandler('items', callback=command_handler_item_bag)
     menu_handler = CommandHandler('menu', callback=command_handler_menu)
+    settings_handler = CommandHandler('settings', callback=command_handler_settings)
     callback_query_handler = CallbackQueryHandler(callback=callback_handler)
     update_username_handler = CommandHandler('username', callback=command_handler_update_username)
+    change_language = CommandHandler('lang', callback=command_handler_change_language)
     friendlist_handler = CommandHandler('friendlist', callback=command_handler_firendlist)
     addfriend_handler = CommandHandler('addfriend', callback=command_handler_add_friend)
     reset_handler = CommandHandler('exit', callback=command_handler_reset)
@@ -148,7 +158,9 @@ def main():
     dispatcher.add_handler(items_handler)
     dispatcher.add_handler(callback_query_handler)
     dispatcher.add_handler(menu_handler)
+    dispatcher.add_handler(settings_handler)
     dispatcher.add_handler(update_username_handler)
+    dispatcher.add_handler(change_language)
     dispatcher.add_handler(friendlist_handler)
     dispatcher.add_handler(addfriend_handler)
     dispatcher.add_handler(reset_handler)

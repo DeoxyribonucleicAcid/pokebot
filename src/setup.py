@@ -1,4 +1,5 @@
 import argparse
+import glob
 import json
 import logging
 import os
@@ -35,6 +36,13 @@ def prepare_environment():
             EichState.names_dict = json.load(f)
     else:
         raise EnvironmentError("Names file not existent or wrong format")
+
+    str_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/strings'
+    os.chdir(str_path)
+    for file in glob.glob('strings_*.json'):
+        with open(str_path + '/'+file) as f:
+            countryCode = file[-7:-5]
+            EichState.string_dicts[countryCode] = json.load(f)
 
     directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/res/tmp'
     if not os.path.exists(directory):

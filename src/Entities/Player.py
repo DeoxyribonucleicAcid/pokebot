@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Player:
     def __init__(self, chat_id, username: str = None, friendlist=None, items=None, pokemon=None, pokemon_team=None,
-                 last_encounter=None, edit_pokemon_id=None, nc_msg_state=None, encounters=False,
+                 last_encounter=None, edit_pokemon_id=None, nc_msg_state=None, lang=None, encounters=False,
                  messages_to_delete=None, encounter=None, trade=None, duels=None):
         self.chat_id: int = chat_id
         self.username = username.lower() if username is not None else None
@@ -23,6 +23,7 @@ class Player:
         self.nc_msg_state: int = nc_msg_state
         self.edit_pokemon_id = edit_pokemon_id
         self.messages_to_delete: List[Message.Message] = [] if messages_to_delete is None else messages_to_delete
+        self.lang = 'EN' if lang is None else lang
 
         self.encounters: bool = encounters
         self.last_encounter: float = time.time() if last_encounter is None else last_encounter
@@ -51,6 +52,7 @@ class Player:
                   'last_encounter': self.last_encounter,
                   'nc_msg_state': self.nc_msg_state,
                   'edit_pokemon_id': self.edit_pokemon_id,
+                  'lang': self.lang,
                   'encounters': self.encounters,
                   'messages_to_delete': [i.serialize_msg() for i in self.messages_to_delete],
                   'encounter': self.encounter.serialize() if self.encounter is not None else None,
@@ -107,6 +109,11 @@ class Player:
             edit_pokemon_id = None
             logging.error(e)
         try:
+            lang = json['lang']
+        except KeyError as e:
+            lang = None
+            logging.error(e)
+        try:
             encounters = json['encounters']
         except KeyError as e:
             encounters = None
@@ -141,6 +148,7 @@ class Player:
                         last_encounter=last_encounter,
                         nc_msg_state=nc_msg_state,
                         edit_pokemon_id=edit_pokemon_id,
+                        lang=lang,
                         encounters=encounters,
                         messages_to_delete=messages_to_delete,
                         encounter=encounter,

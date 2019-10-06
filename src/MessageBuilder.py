@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import random
 import sys
@@ -6,11 +7,11 @@ import time
 from functools import wraps
 from io import BytesIO
 
-import math
 from pymongo.errors import DuplicateKeyError
 from telegram import ChatAction
 
 import DBAccessor as DBAccessor
+import Texter
 from Entities import Pokemon
 from src.EichState import EichState
 
@@ -37,8 +38,12 @@ def build_msg_start(bot, update):
                            ' People call me the Pok\xe9mon Prof!\n'
                            'I will give you some hints in battle, just type the name of your'
                            ' opponent\'s pokemon in english or german.\n'
+                           'To start catching, training and dueling Pok\xe9mon, set a /username and enable encounters.'
+                           '(Disclaimer: I will remember your Telegram-Username and this Chat-ID when you are using'
+                           ' anything other functions than hints in battle and /help command. '
+                           'Contact @EeveesEyes if you want your Account deleted.)\n'
                            'Type /start to show this message.\n'
-                           'Try the /help and /menu commands')
+                           'Try the /help /settings and /menu commands')
 
 
 def build_msg_help(bot, chat_id):
@@ -90,6 +95,9 @@ def adjust_encounter_chance(bot, chat_id, chance):
 
 
 def test(bot, update):
+    player = DBAccessor.get_player(update.effective_message.chat_id)
+    bot.send_message(chat_id=update.effective_message.chat_id, text=Texter.get_text(player, 'testmsg'))
+    return
     player = DBAccessor.get_player(update.effective_message.chat_id)
     for poke in player.pokemon:
         DBAccessor.delete_pokemon(poke)

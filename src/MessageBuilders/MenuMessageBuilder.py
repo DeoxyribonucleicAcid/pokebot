@@ -33,10 +33,7 @@ def send_menu_message(bot, update):
                                    encounters=False)
         DBAccessor.insert_new_player(new_player)
     else:
-        player.messages_to_delete.append(
-            Message.Message(msg.message_id, _title=Constants.MESSAGE_TYPES.MENU_MSG, _time_sent=time.time()))
-        query = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
-        DBAccessor.update_player(_id=player.chat_id, update=query)
+        MessageHelper.append_message_to_player(player.chat_id, msg.message_id, Constants.MESSAGE_TYPES.MENU_MSG)
 
 
 def update_menu_message(bot, chat_id, msg_id):
@@ -87,6 +84,30 @@ def build_msg_menu(chat_id, encounters: bool, trade: Trade, duels: List[int]):
                 text='View duel with {}'.format(friend.username),
                 callback_data=Constants.CALLBACK.DUEL_ACTIVE(duel.event_id))])
     text = 'Menu:'
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
+    return text, reply_markup
+
+
+def send_settings_menu(bot, update):
+    player = DBAccessor.get_player(update.message.chat_id)
+    if player is not None:
+        MessageHelper.delete_messages_by_type(bot=bot, chat_id=update.message.chat_id,
+                                              type=Constants.MESSAGE_TYPES.SETTINGS_MSG)
+    else:
+        msg = bot.send_message(chat_id=update.message.chat_id,
+                               text='I do not know you yet. To be recognized next time, update your /username or type /catch\n'
+                                    'Latter will enable encounters as well.')
+        return
+    text, reply_markup = build_msg_settings_menu()
+    msg = bot.send_message(chat_id=update.message.chat_id, text=text,
+                           reply_markup=reply_markup)
+    MessageHelper.append_message_to_player(player.chat_id, msg.message_id, Constants.MESSAGE_TYPES.SETTINGS_MSG)
+
+
+def build_msg_settings_menu():
+    keys = [[InlineKeyboardButton(text='Update Username', callback_data=Constants.CALLBACK.SETTINGS_USERNAME)],
+            [InlineKeyboardButton(text='Change Language', callback_data=Constants.CALLBACK.SETTINGS_LANG)]]
+    text = 'Settings:'
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
     return text, reply_markup
 

@@ -1,5 +1,6 @@
 from MessageBuilders import TradeMessageBuilder, BagMessageBuilder, PokeDisplayBuilder, \
-    FriendlistMessageBuilder, EncounterMessageBuilder, MenuMessageBuilder, ItemBagMessageBuilder, DuelMessageBuilder
+    FriendlistMessageBuilder, EncounterMessageBuilder, MenuMessageBuilder, ItemBagMessageBuilder, DuelMessageBuilder, \
+    ChangeLanguageHandler, UpdateUsernameHandler
 
 
 class CALLBACK_HANDLER:
@@ -9,7 +10,11 @@ class CALLBACK_HANDLER:
             'trade': TradeMessageBuilder.build_msg_trade,
             'catch': MenuMessageBuilder.toggle_encounter,
             'items': ItemBagMessageBuilder.build_msg_item_bag,
-            'friendlist': FriendlistMessageBuilder.build_friendlist_message
+            'friendlist': FriendlistMessageBuilder.build_friendlist_message,
+        },
+        'settings': {
+            'username': UpdateUsernameHandler.update_username,
+            'lang': ChangeLanguageHandler.send_lang_menu
         },
         'bag': {
             'page': BagMessageBuilder.build_msg_bag,
@@ -85,6 +90,7 @@ class CALLBACK_HANDLER:
             }
         },
         'catch': EncounterMessageBuilder.catch,
+        'language': ChangeLanguageHandler.change_lang,
     }
 
     @staticmethod

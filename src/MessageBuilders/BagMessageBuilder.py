@@ -19,25 +19,25 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
         bot.send_message(chat_id=chat_id,
                          text='I have not met you yet. Want to be a Pok\xe9mon trainer? Type /catch.')
         return
-
+    pokelist = player.pokemon_team + player.pokemon
     pokemon_sprite_list = []
     caption = ''
-    if len(player.pokemon) > pokecount:
+    if len(pokelist) > pokecount:
         caption = '*Page Number: *' + str(page_number) + '  Pok\xe9 ' + str(
             (page_number * pokecount) + 1) + '-' + (
                       str((page_number + 1) * pokecount) if (page_number + 1) * pokecount <= len(
-                          player.pokemon) else str(len(player.pokemon))) + '/' + str(len(player.pokemon)) + '\n'
+                          pokelist) else str(len(pokelist))) + '/' + str(len(pokelist)) + '\n'
     list_start = pokecount * page_number
-    list_end = pokecount * (page_number + 1) if len(player.pokemon) >= pokecount * (page_number + 1) else len(
-        player.pokemon)
-    page_list = player.pokemon[list_start:list_end]
+    list_end = pokecount * (page_number + 1) if len(pokelist) >= pokecount * (page_number + 1) else len(
+        pokelist)
+    page_list = pokelist[list_start:list_end]
     keys = []
     for pokemon_id in page_list:
         pokemon = DBAccessor.get_pokemon_by_id(pokemon_id)
         if pokemon is None:
             logging.error('Pokemon with id {} None!'.format(pokemon))
-            player.pokemon.remove(pokemon_id)
-            DBAccessor.update_player(chat_id, DBAccessor.get_update_query_player(player.pokemon))
+            pokelist.remove(pokemon_id)
+            DBAccessor.update_player(chat_id, DBAccessor.get_update_query_player(pokelist))
         keys.append([InlineKeyboardButton(text=pokemon.name,
                                           callback_data=Constants.CALLBACK.POKE_DISPLAY_CONFIG(trade_mode=trade_mode,
                                                                                                page_number=page_number,
@@ -58,7 +58,7 @@ def build_msg_bag(bot, chat_id, trade_mode, page_number):
             keys[-1].append(InlineKeyboardButton(text='\u2190',
                                                  callback_data=Constants.CALLBACK.BAG_PAGE(trade_mode,
                                                                                            page_number - 1)))
-        if len(player.pokemon) > list_end:
+        if len(pokelist) > list_end:
             keys[-1].append(InlineKeyboardButton(text='\u2192',
                                                  callback_data=Constants.CALLBACK.BAG_PAGE(trade_mode,
                                                                                            page_number + 1)))

@@ -5,6 +5,8 @@ from enum import Enum
 class MESSAGE_TYPES:
     ENCOUNTER_MSG = 'encounter_msg'
     MENU_MSG = 'menu_msg'
+    SETTINGS_MSG = 'settings_msg'
+    LANG_MENU = 'lang_menu'
     BAG_MSG = 'bag_msg'
     MENU_INFO_MSG = 'menu_info_msg'
     FRIENDLIST_MSG = 'friendlist_msg'
@@ -56,6 +58,10 @@ class CALLBACK:
     MENU_CATCH = 'menu-catch'
     MENU_ITEMS = 'menu-items'
     MENU_FRIENDLIST = 'menu-friendlist'
+
+    # SETTINGS CALLBACKS
+    SETTINGS_USERNAME = 'settings-username'
+    SETTINGS_LANG = 'settings-lang'
 
     # BAG CALLBACKS
     @staticmethod
@@ -173,3 +179,6 @@ class CALLBACK:
 
     @staticmethod
     def CATCH(direction: int): return 'catch%' + str(direction)
+
+    @staticmethod
+    def CHANGE_LANGUAGE(lang: str): return 'language%' + lang

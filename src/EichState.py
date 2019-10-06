@@ -19,3 +19,4 @@ class EichState:
     duel_col = None
     poke_col = None
     nc_msg_state_state = Constants.NC_MSG_States.INFO
+    string_dicts={}

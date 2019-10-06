@@ -126,7 +126,7 @@ def get_update_query_player(chat_id=None, username=None, friendlist=None, items=
                             last_encounter=None, nc_msg_state=None,
                             edit_pokemon_id=None, encounters=None,
                             messages_to_delete: List[Message.Message] = None,
-                            encounter=None, trade=None, duels=None):
+                            lang=None, encounter=None, trade=None, duels=None):
     query = {'$set': {}, '$unset': {}}
     if chat_id is not None: query['$set']['chat_id'] = chat_id
     if username is not None: query['$set']['username'] = username
@@ -137,6 +137,7 @@ def get_update_query_player(chat_id=None, username=None, friendlist=None, items=
     if last_encounter is not None: query['$set']['last_encounter'] = last_encounter
     if nc_msg_state is not None: query['$set']['nc_msg_state'] = nc_msg_state.value
     if edit_pokemon_id is not None: query['$set']['edit_pokemon_id'] = edit_pokemon_id
+    if lang is not None: query['$set']['lang'] = lang
     if encounters is not None: query['$set']['encounters'] = encounters
     if messages_to_delete is not None: query['$set']['messages_to_delete'] = [i.serialize_msg() for i in
                                                                               messages_to_delete]
