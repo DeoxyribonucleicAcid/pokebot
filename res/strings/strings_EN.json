@@ -1,3 +1,10 @@
 {
   "testmsg": "This is a test message!"
+  "new_player_msg": "I have not met you yet. Want to be a Pok\xe9mon trainer? Type /catch."
+  "empty_bag_msg":  "Your bag is empty, catch some pokemon!"
+  "choose_language_msg": "Choose your preferred language:"
+  "language_updated_msg": "Your language has been updated!"
+  "choose_action_msg":  "Choose your action!"
+  "already_dueling_msg": "You are already dueling with {}"
+  "not_enough_pokemon_msg": "You have not enough Pok\xe9mon to put a team for a duel. Go on catching!"
 }

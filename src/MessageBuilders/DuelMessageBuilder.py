@@ -25,7 +25,7 @@ def build_current_duel_status(bot, chat_id, duel: Duel.Duel):
             [InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)]]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
 
-    msg = bot.send_photo(chat_id=player.chat_id, text='Choose your action!',
+    msg = bot.send_photo(chat_id=player.chat_id, text=get_text(player, 'choose_action_msg'),
                          photo=bio_player, reply_markup=reply_markup)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_STATUS_MSG, _time_sent=time.time()))
@@ -43,11 +43,10 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
     duel = DBAccessor.get_duel_by_participants(chat_id, friend_id)
     if duel is not None:
         bot.send_message(chat_id=player.chat_id,
-                         text='You are already dueling with {}'.format(friend.username))
+                         text=get_text(player, 'already_dueling_msg').format(friend.username))
         build_msg_duel_active(bot=bot, chat_id=chat_id, duel_id=duel.event_id)
     elif len(player.pokemon_team) + len(player.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
-        bot.send_message(chat_id=chat_id,
-                         text='You have not enough Pok\xe9mon to put a team for a duel. Go on catching!')
+        bot.send_message(chat_id=chat_id, text=get_text(player, 'testmsg'))
         return
     elif len(friend.pokemon_team) + len(friend.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
         bot.send_message(chat_id=friend_id,
