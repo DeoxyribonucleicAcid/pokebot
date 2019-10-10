@@ -11,7 +11,8 @@ from Entities.EventType import EventType
 
 
 class DuelAction:
-    def __init__(self, source=None, initiative=None, target=None, completed: bool = None):
+    def __init__(self, duel_id=None, source=None, initiative=None, target=None, completed: bool = None):
+        self.duel_id = duel_id
         self.source = source
         self.initiative = initiative
         self.target = target
@@ -24,14 +25,20 @@ class DuelAction:
         raise NotImplementedError
 
     def serialize(self):
-        return {'action_type': None,
+        return {'duel_id': self.duel_id,
+                'action_type': None,
                 'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
+                'initiative': self.initiative.value if type(self.initiative) == Enum else self.initiative,  # FIXME
                 'target': self.target,
                 'completed': self.completed}
 
     @staticmethod
     def deserialize(json):
+        try:
+            duel_id = json['duel_id']
+        except KeyError as e:
+            duel_id = None
+            logging.error(e)
         try:
             action_type = json['action_type']
         except KeyError as e:
@@ -58,11 +65,14 @@ class DuelAction:
             completed = None
             logging.error(e)
         if action_type == Constants.ACTION_TYPES.EXCHANGEPOKE:
-            return ActionExchangePoke(source=source, initiative=initiative, target=target, completed=completed)
+            return ActionExchangePoke(duel_id=duel_id, source=source, initiative=initiative,
+                                      target=target, completed=completed)
         elif action_type == Constants.ACTION_TYPES.ATTACK:
-            return ActionAttack(source=source, initiative=initiative, target=target, completed=completed)
+            return ActionAttack(duel_id=duel_id, source=source, initiative=initiative,
+                                target=target, completed=completed)
         elif action_type == Constants.ACTION_TYPES.USEITEM:
-            return ActionUseItem(source=source, initiative=initiative, target=target, completed=completed)
+            return ActionUseItem(duel_id=duel_id, source=source, initiative=initiative,
+                                 target=target, completed=completed)
 
 
 class ActionAttack(DuelAction):
@@ -71,29 +81,50 @@ class ActionAttack(DuelAction):
         poke = DBAccessor.get_pokemon_by_id(participant.pokemon)
         move = next((x for x in poke.moves if x.move_id == attack_id), None)
         if move is not None:
-            if move.target != 'selected-pokemon':
+            if move.target not in ['selected-pokemon', 'all-opponents']:
                 bot.send_message(chat_id=participant.player_id, text='This attack is not supported yet, '
                                                                      'please choose another one (and blame the devs!)')
                 # FIXME
                 bot.send_message(chat_id=252269446, text='#target {}'.format(move.target))
                 # return
                 # raise NotImplementedError('Move type {} is not known'.format(move.target))# specific-move
+            else:
+                bot.send_message(chat_id=participant.player_id, text='{} will use {} against {}'.format(
+                    poke.name, move.name, DBAccessor.get_pokemon_by_id(DBAccessor.get_duel_by_id(
+                        self.duel_id).get_counterpart_by_id(participant.player_id).pokemon).name))
             self.completed = True
             self.source = move.move_id
             self.initiative = poke.speed
 
     # FIXME Target is None
-    def perform(self, bot, participant, target_id):
+    def perform(self, bot, participant, target_id=None):
         move = Move.Move.get_move(Move.Move.get_move_url(self.source))
-        target_pokemon = DBAccessor.get_pokemon_by_id(target_id)
+        # get target id (which should be none)
+        if target_id is not None:
+            self.target = target_id
+        else:
+            if self.duel_id is None:
+                raise ValueError("target and duel ids are none!")
+            else:
+                duel = DBAccessor.get_duel_by_id(self.duel_id)
+            if move.target == 'selected-pokemon' or move.target == 'all-opponents':
+                self.target = duel.get_counterpart_by_id(participant.player_id).pokemon
+                # CHANGEME when multiple champions are on the field
+                # elif move.target == 'all-opponents':
+                target_id = duel.get_counterpart_by_id(participant.player_id).pokemon
+            elif move.target == 'specific-move':
+                # TODO
+                raise ValueError("specific-move is not supported!")
 
-        if move.accuracy is None or random.random() > move.accuracy / 100:
-            if target_pokemon.health - move.power <= 0:
+        target_pokemon = DBAccessor.get_pokemon_by_id(int(self.target))
+
+        if move.accuracy is None or random.random() < move.accuracy / 100:
+            if move.power is not None and target_pokemon.health - move.power <= 0:
                 # Pokemon sleep now
                 damage = target_pokemon.health
                 target_pokemon.health = 0
             else:
-                damage = move.power
+                damage = move.power if move.power is not None else 0
                 target_pokemon.health -= move.power
 
             query = DBAccessor.get_update_query_pokemon(health=target_pokemon.health)
@@ -103,11 +134,10 @@ class ActionAttack(DuelAction):
             return 'Attack missed!'
 
     def serialize(self):
-        return {'action_type': Constants.ACTION_TYPES.ATTACK,
-                'source': self.source,
-                'initiative': self.initiative.value if type(self.initiative) == Enum else self.initiative,  # FIXME
-                'target': self.target,
-                'completed': self.completed}
+        super_ser = super().serialize()
+        super_ser['action_type'] = Constants.ACTION_TYPES.ATTACK
+        super_ser['initiative'] = self.initiative.value if type(self.initiative) == Enum else self.initiative  # FIXME
+        return super_ser
 
 
 class ActionExchangePoke(DuelAction):
@@ -124,7 +154,7 @@ class ActionExchangePoke(DuelAction):
             bot.send_message(chat_id=player.chat_id,
                              text='You nominated {} as your champion!'.format(champion.name))
 
-    def perform(self, bot, participant, target_id):
+    def perform(self, bot, participant, target_id=None):
         # TODO: Switch to ID
         result = '{} switches{} to {}'.format(
             DBAccessor.get_player(participant.player_id).username,
@@ -135,11 +165,10 @@ class ActionExchangePoke(DuelAction):
         return result
 
     def serialize(self):
-        return {'action_type': Constants.ACTION_TYPES.EXCHANGEPOKE,
-                'source': self.source,
-                'initiative': self.initiative.value if self.initiative is not None else None,
-                'target': self.target,
-                'completed': self.completed}
+        super_ser = super().serialize()
+        super_ser['action_type'] = Constants.ACTION_TYPES.EXCHANGEPOKE
+        super_ser['initiative'] = self.initiative.value if type(self.initiative) == Enum else self.initiative  # FIXME
+        return super_ser
 
 
 class ActionUseItem(DuelAction):
