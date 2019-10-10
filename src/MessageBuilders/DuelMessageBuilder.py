@@ -25,7 +25,7 @@ def build_current_duel_status(bot, chat_id, duel: Duel.Duel):
             [InlineKeyboardButton(text='Use Item', callback_data=Constants.CALLBACK.DUEL_ACTION_ITEM)]]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
 
-    msg = bot.send_photo(chat_id=player.chat_id, text=get_text(player, 'choose_action_msg'),
+    msg = bot.send_photo(chat_id=player.chat_id, text=Texter.get_text(player, 'choose_action_msg'),
                          photo=bio_player, reply_markup=reply_markup)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_STATUS_MSG, _time_sent=time.time()))
@@ -43,17 +43,16 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
     duel = DBAccessor.get_duel_by_participants(chat_id, friend_id)
     if duel is not None:
         bot.send_message(chat_id=player.chat_id,
-                         text=get_text(player, 'already_dueling_msg').format(friend.username))
+                         text=Texter.get_text(player, 'already_dueling_msg').format(friend.username))
         build_msg_duel_active(bot=bot, chat_id=chat_id, duel_id=duel.event_id)
     elif len(player.pokemon_team) + len(player.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
-        bot.send_message(chat_id=chat_id, text=get_text(player, 'testmsg'))
+        bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'duel_start_not_enough_pokemon_challenging'))
         return
     elif len(friend.pokemon_team) + len(friend.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
         bot.send_message(chat_id=friend_id,
-                         text='Your friend {} challenged you to a duel, but you have not enough '
-                              'Pok\xe9mon to put a team for a duel. Go on catching!'.format(player.username))
+                         text=Texter.get_text(player, 'duel_start_not_enough_pokemon_challenged').format(player.username))
         bot.send_message(chat_id=chat_id,
-                         text='Sadly, {} has not enough Pok\xe9mon to put a team for a duel.'.format(friend.username))
+                         text=Texter.get_text(player, 'duel_start_not_enough_pokemon_challenger').format(friend.username))
         return
     else:
         keys = [[
@@ -62,15 +61,14 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
         ]]
         reply_keyboard = InlineKeyboardMarkup(inline_keyboard=keys)
         invite_msg = bot.send_message(chat_id=friend_id,
-                                      text='Your friend ' + str(
-                                          player.username) + ' challenges you to a duel. Are you interested?',
-                                      reply_markup=reply_keyboard)
+                                      text=Texter.get_text(player, 'invite_msg').format(str(
+                                          player.username)), reply_markup=reply_keyboard)
         friend.messages_to_delete.append(
             Message.Message(_id=invite_msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_INVITE_MSG,
                             _time_sent=time.time()))
         query_friend = DBAccessor.get_update_query_player(messages_to_delete=friend.messages_to_delete)
         DBAccessor.update_player(_id=friend.chat_id, update=query_friend)
-        bot.send_message(chat_id=chat_id, text='...Awaiting {}\'s response...'.format(friend.username))
+        bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'awaiting_response').format(friend.username))
 
     # if len(player.duels) is not 0:
     #     bot.send_message(chat_id=player.chat_id,
@@ -90,7 +88,7 @@ def abort_duel(bot, chat_id, duel_id):
         return False
     if not (duel.participant_1.player_id == int(chat_id) or duel.participant_2.player_id == int(chat_id)):
         bot.send_message(chat_id=chat_id,
-                         text='Wrong duel to be aborted. This should not happen.')
+                         text=Texter.get_text(player, 'wrong_duel_aborted'))
     player = DBAccessor.get_player(int(chat_id))
     friend = DBAccessor.get_player(duel.participant_1.player_id if duel.participant_1
                                    .player_id is not player.chat_id else duel.participant_2.player_id)
@@ -126,7 +124,7 @@ def build_msg_duel_invite_accept(bot, chat_id, init_player_id):
             friend.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)) > 0:
         MenuMessageBuilder.update_menu_message(bot, init_player_id,
                                                friend.get_messages(Constants.MESSAGE_TYPES.MENU_MSG)[-1]._id)
-    bot.send_message(chat_id=init_player_id, text='{} accepted the challenge!'.format(player.username))
+    bot.send_message(chat_id=init_player_id, text=Texter.get_text(player, 'challenge_accepted').format(player.username))
     start_duel(bot=bot, chat_id=player.chat_id, event_id=new_duel.event_id)
     start_duel(bot=bot, chat_id=friend.chat_id, event_id=new_duel.event_id)
 
@@ -137,13 +135,13 @@ def start_duel(bot, chat_id, event_id):
     if len(player.pokemon_team) >= Constants.DUEL_MIN_POKEMON_PER_TEAM:
         keys[0].append(
             InlineKeyboardButton(text='Default', callback_data=Constants.CALLBACK.DUEL_START_DEFAULT(event_id)))
-        text = 'Do you want to use your default team or a custom one?'
+        text = Texter.get_text(player, 'default_or_custom')
     elif len(player.pokemon_team) + len(player.pokemon) < Constants.DUEL_MIN_POKEMON_PER_TEAM:
         bot.send_message(chat_id=chat_id,
-                         text='You have not enough Pok\xe9mon to put a team for a duel. Go on catching!')
+                         text=Texter.get_text(player, 'duel_start_not_enough_pokemon_challenging'))
         return
     else:
-        text = 'Your default team is not big enough, set up a custom team!'
+        text = Texter.get_text(player, 'default_team_too_small')
     keys[0].append(
         InlineKeyboardButton(text='Custom', callback_data=Constants.CALLBACK.DUEL_START_CUSTOM(event_id)))
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
@@ -170,9 +168,9 @@ def build_msg_duel_invite_deny(bot, chat_id, init_player_id):
     init_player = DBAccessor.get_player(int(init_player_id))
     MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.DUEL_INVITE_MSG)
     bot.send_message(chat_id=player.chat_id,
-                     text='Duel cancelled')
+                     text=Texter.get_text(player, 'duel_cancelled'))
     bot.send_message(chat_id=init_player.chat_id,
-                     text='Your friend is currently not interested in a challenge.')
+                     text=Texter.get_text(player, 'challenge_denied'))
 
 
 def calc_round(bot, duel_id: int):
@@ -245,8 +243,7 @@ def build_msg_duel_action_pokemon(bot, chat_id, duel_id):
         duel.update_participant(chat_id)
     if duel.get_participant_by_id(chat_id).team is None or len(duel.get_participant_by_id(chat_id).team) < 3:
         bot.send_message(chat_id=player.chat_id,
-                         text='Your pokemon-team is too small. '
-                              'This should not happen at this time. Blame the devs and choose again!!')
+                         text=Texter.get_text(player, 'team_too_small'))
         send_team_selection(bot, chat_id, duel_id, 0)
         return
     if duel.get_participant_by_id(chat_id).action is None:
@@ -266,11 +263,11 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
     # poke2 = DBAccessor.get_pokemon_by_id(participant.pokemon)
     if participant_player.pokemon is None:
         bot.send_message(chat_id=participant_player.player_id,
-                         text='Your pokemon-champion is somehow not set! You have to choose again')
+                         text=Texter.get_text(player, 'champion_not_set'))
         raise AttributeError('Champion is None: Duel_id: {}'.format(duel.event_id))
     elif poke1.moves is None or len(poke1.moves) is 0:
         bot.send_message(chat_id=participant_player.player_id,
-                         text='Your pokemon-champion has not enough attack moves!')
+                         text=Texter.get_text(player, 'champion_no_attack_moves'))
         raise AttributeError('Champion has no moves: Duel_id: {} Poke_id: {}'
                              .format(duel.event_id, participant_player.pokemon))
 
@@ -300,11 +297,11 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
         msg = bot.send_photo(chat_id=chat_id,
                              photo=bio,
                              reply_markup=reply_markup,
-                             caption='Choose {}\'s attack'.format(poke1.name),
+                             caption=Texter.get_text(player, 'choose_attack').format(poke1.name),
                              parse_mode=ParseMode.MARKDOWN)
     else:
         msg = bot.send_message(chat_id=chat_id,
-                               text='Your team is empty, nominate some pokemon!')
+                               text=Texter.get_text(player, 'empty_team'))
     player = DBAccessor.get_player(int(chat_id))
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG, _time_sent=time.time()))
@@ -313,7 +310,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
 
 
 def build_msg_duel_action_item(bot, chat_id, duel_id):
-    bot.send_message(chat_id=chat_id, text='Method not implemented yet.')
+    bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'method_not_implemented'))
 
 
 def build_msg_duel_active(bot, chat_id, duel_id):
@@ -412,13 +409,12 @@ def build_msg_duel_active(bot, chat_id, duel_id):
         bio.seek(0)
         msg = bot.send_photo(chat_id=chat_id,
                              photo=bio,
-                             caption='Current Status' + caption,
+                             caption=Texter.get_text(player, 'current_status') + caption,
                              reply_markup=reply_markup,
                              parse_mode=ParseMode.MARKDOWN)
     else:
         msg = bot.send_message(chat_id=chat_id,
-                               text='Neither have you chosen your Pokemon team for '
-                                    'this duel nor has your opponent nominated a champion.',
+                               text=Texter.get_text(player, 'no_pokemon_chosen'),
                                reply_markup=reply_markup)
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_STATUS_MSG, _time_sent=time.time()))
