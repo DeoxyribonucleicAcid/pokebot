@@ -1,18 +1,26 @@
+from emoji import emojize
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
+import Texter
 from MessageBuilders import MessageHelper
 from src.EichState import EichState
 
 
 def send_lang_menu(bot, chat_id):
+    player = DBAccessor.get_player(int(chat_id))
     MessageHelper.delete_messages_by_type(bot, chat_id, Constants.MESSAGE_TYPES.LANG_MENU)
+    checkmark = emojize(":white_check_mark:", use_aliases=True)
     keys = []
     for lang in EichState.string_dicts.keys():
-        keys.append([InlineKeyboardButton(text=lang, callback_data=Constants.CALLBACK.CHANGE_LANGUAGE(lang))])
+        check = checkmark if player.lang == lang else ''
+        keys.append(
+            [InlineKeyboardButton(text=check + '   ' + lang + '   ' + check,
+                                  callback_data=Constants.CALLBACK.CHANGE_LANGUAGE(lang))])
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
-    msg = bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'choose_language_msg'), reply_markup=reply_markup)
+    msg = bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'choose_language_msg'),
+                           reply_markup=reply_markup)
     MessageHelper.append_message_to_player(chat_id, msg.message_id, Constants.MESSAGE_TYPES.LANG_MENU)
 
 

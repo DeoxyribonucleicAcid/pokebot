@@ -8,6 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 
 import Constants
 import DBAccessor
+import Texter
 from Entities import Message, Duel, Pokemon
 from MessageBuilders import MessageHelper, MenuMessageBuilder
 
@@ -84,12 +85,12 @@ def build_msg_duel_start_friend(bot, chat_id, friend_id):
 
 def abort_duel(bot, chat_id, duel_id):
     duel = DBAccessor.get_duel_by_id(int(duel_id))
+    player = DBAccessor.get_player(int(chat_id))
     if duel is None:
         return False
     if not (duel.participant_1.player_id == int(chat_id) or duel.participant_2.player_id == int(chat_id)):
         bot.send_message(chat_id=chat_id,
                          text=Texter.get_text(player, 'wrong_duel_aborted'))
-    player = DBAccessor.get_player(int(chat_id))
     friend = DBAccessor.get_player(duel.participant_1.player_id if duel.participant_1
                                    .player_id is not player.chat_id else duel.participant_2.player_id)
     MessageHelper.delete_messages_by_type(bot, player.chat_id, Constants.MESSAGE_TYPES.DUEL_STATUS_MSG)
@@ -269,6 +270,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
     # participant = duel.get_counterpart_by_id(chat_id)
     poke1 = DBAccessor.get_pokemon_by_id(participant_player.pokemon)
     # poke2 = DBAccessor.get_pokemon_by_id(participant.pokemon)
+    player = DBAccessor.get_player(int(chat_id))
     if participant_player.pokemon is None:
         bot.send_message(chat_id=participant_player.player_id,
                          text=Texter.get_text(player, 'champion_not_set'))
@@ -313,7 +315,6 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
     else:
         msg = bot.send_message(chat_id=chat_id,
                                text=Texter.get_text(player, 'empty_team'))
-    player = DBAccessor.get_player(int(chat_id))
     player.messages_to_delete.append(
         Message.Message(_id=msg.message_id, _title=Constants.MESSAGE_TYPES.DUEL_CHOOSE_MSG, _time_sent=time.time()))
     update = DBAccessor.get_update_query_player(messages_to_delete=player.messages_to_delete)
@@ -321,6 +322,7 @@ def build_msg_duel_action_attack(bot, chat_id, duel_id):
 
 
 def build_msg_duel_action_item(bot, chat_id, duel_id):
+    player = DBAccessor.get_player(int(chat_id))
     bot.send_message(chat_id=chat_id, text=Texter.get_text(player, 'method_not_implemented'))
 
 

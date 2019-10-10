@@ -1,12 +1,12 @@
 {
   "testmsg": "Dies ist eine Testnachricht!",
-  "new_player_msg": "Dich kenne ich noch nicht. Willst du ein Pok\xe9montrainer werden? Tippe /catch.",
+  "new_player_msg": "Dich kenne ich noch nicht. Willst du ein Pokémontrainer werden? Tippe /catch.",
   "empty_bag_msg":  "Dein Rucksack ist leer, fange ein paar Pokemon!",
   "choose_language_msg": "Wähle deine Sprache:",
   "language_updated_msg": "Deine Sprache wurde aktualisiert!",
   "choose_action_msg":  "Wähle deine Aktion!",
   "already_dueling_msg": "Du duelierst dich schon mit {}",
-  "not_enough_pokemon_msg": "Du hast nicht genug Pok\xe9mon um ein Team zu erstellen. Fange erst ein paar!",
+  "not_enough_pokemon_msg": "Du hast nicht genug Pokémon um ein Team zu erstellen. Fange erst ein paar!",
 
   "captured_pokemon": "{} wurde gefangen!"
 }

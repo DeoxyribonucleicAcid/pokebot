@@ -6,6 +6,7 @@ from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 import Constants
 import DBAccessor
+import Texter
 from Entities import Pokemon, Message
 from MessageBuilders import MessageHelper
 
