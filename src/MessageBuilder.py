@@ -1,18 +1,13 @@
 import logging
 import math
 import os
-import random
 import sys
 import time
 from functools import wraps
-from io import BytesIO
 
-from pymongo.errors import DuplicateKeyError
 from telegram import ChatAction
 
 import DBAccessor as DBAccessor
-import Texter
-from Entities import Pokemon
 from src.EichState import EichState
 
 logger = logging.getLogger(__name__)
@@ -95,44 +90,4 @@ def adjust_encounter_chance(bot, chat_id, chance):
 
 
 def test(bot, update):
-    player = DBAccessor.get_player(update.effective_message.chat_id)
-    bot.send_message(chat_id=update.effective_message.chat_id, text=Texter.get_text(player, 'testmsg'))
-    return
-    player = DBAccessor.get_player(update.effective_message.chat_id)
-    for poke in player.pokemon:
-        DBAccessor.delete_pokemon(poke)
-
-    for i in range(3):
-        pokemon_name = EichState.names_dict['pokenames'][
-            random.choice(list(EichState.names_dict['pokenames'].keys()))]
-        pokemon = Pokemon.get_random_poke(Pokemon.get_pokemon_json(pokemon_name), 10)
-        try:
-            result = DBAccessor.insert_new_pokemon(pokemon)
-            player.pokemon.append(pokemon.poke_id)
-        except DuplicateKeyError as e:
-            pass
-    DBAccessor.update_player(update.effective_message.chat_id,
-                             DBAccessor.get_update_query_player(pokemon=player.pokemon))
-
-    return
-
-    if len(player.pokemon) < 5:
-        msg = bot.send_message(chat_id=player.chat_id,
-                               text='Not enough pokemon!')
-        return
-
-    pokemon_player = [DBAccessor.get_pokemon_by_id(i) for i in player.pokemon[:3]]
-    pokemon_enemy = DBAccessor.get_pokemon_by_id(player.pokemon[4])
-    champion_player = DBAccessor.get_pokemon_by_id(player.pokemon[5])
-    img = Pokemon.build_pokemon_duel_info_image(pokemon_player, champion_player, pokemon_enemy)
-    if img is not None:
-        bio = BytesIO()
-        bio.name = 'image_duel_info_' + str(player.chat_id) + '.png'
-        img.save(bio, 'PNG')
-        bio.seek(0)
-        msg = bot.send_photo(chat_id=player.chat_id,
-                             photo=bio,
-                             caption='Current Status')
-    else:
-        msg = bot.send_message(chat_id=player.chat_id,
-                               text='Something went wrong!')
+    pass

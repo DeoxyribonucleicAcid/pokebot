@@ -98,15 +98,20 @@ class ActionAttack(DuelAction):
 
     # FIXME Target is None
     def perform(self, bot, participant, target_id=None):
+        if participant.pokemon is None:
+            return '{} has no champion competing in this round!'.format(
+                DBAccessor.get_player(participant.player_id).username)
+        elif DBAccessor.get_pokemon_by_id(int(participant.pokemon)).health <= 0:
+            return '{} has to leave the battlefield'.format(DBAccessor.get_pokemon_by_id(participant.pokemon).name)
         move = Move.Move.get_move(Move.Move.get_move_url(self.source))
         # get target id (which should be none)
+        if self.duel_id is None:
+            raise ValueError("duel id is none!")
+        else:
+            duel = DBAccessor.get_duel_by_id(self.duel_id)
         if target_id is not None:
             self.target = target_id
         else:
-            if self.duel_id is None:
-                raise ValueError("target and duel ids are none!")
-            else:
-                duel = DBAccessor.get_duel_by_id(self.duel_id)
             if move.target == 'selected-pokemon' or move.target == 'all-opponents':
                 self.target = duel.get_counterpart_by_id(participant.player_id).pokemon
                 # CHANGEME when multiple champions are on the field
@@ -117,19 +122,24 @@ class ActionAttack(DuelAction):
                 raise ValueError("specific-move is not supported!")
 
         target_pokemon = DBAccessor.get_pokemon_by_id(int(self.target))
+        if target_pokemon.health <= 0:
+            return '{} has no champion competing in this round!'.format(
+                DBAccessor.get_player(duel.get_counterpart_by_id(participant.player_id)).username)
 
         if move.accuracy is None or random.random() < move.accuracy / 100:
-            if move.power is not None and target_pokemon.health - move.power <= 0:
-                # Pokemon sleep now
-                damage = target_pokemon.health
-                target_pokemon.health = 0
-            else:
-                damage = move.power if move.power is not None else 0
-                target_pokemon.health -= move.power
+            damage = 0
+            if move.power is not None:
+                if target_pokemon.health - move.power <= 0:
+                    # Pokemon sleep now
+                    damage = target_pokemon.health
+                    target_pokemon.health = 0
+                else:
+                    damage = move.power
+                    target_pokemon.health -= damage
 
             query = DBAccessor.get_update_query_pokemon(health=target_pokemon.health)
             DBAccessor.update_pokemon(_id=target_id, update=query)
-            return '{} retrieved {} damage.'.format(target_pokemon.name, damage)
+            return '{} retrieved {} damage. {} health left.'.format(target_pokemon.name, damage, target_pokemon.health)
         else:
             return 'Attack missed!'
 

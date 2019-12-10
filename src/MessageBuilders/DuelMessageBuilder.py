@@ -608,13 +608,11 @@ def build_team_selection(bot, chat_id, duel_id, page_number):
 
     page_keys = []
     if page_number > 0:
-        page_keys.append(InlineKeyboardButton(text='\u2190',
-                                              callback_data=Constants.CALLBACK.DUEL_TEAM_PAGE(duel_id,
-                                                                                              page_number - 1)))
+        page_keys.append(InlineKeyboardButton(
+            text='\u2190', callback_data=Constants.CALLBACK.DUEL_TEAM_PAGE(duel_id, page_number - 1)))
     if len(player.pokemon) > list_end:
-        page_keys.append(InlineKeyboardButton(text='\u2192',
-                                              callback_data=Constants.CALLBACK.DUEL_TEAM_PAGE(duel_id,
-                                                                                              page_number + 1)))
+        page_keys.append(InlineKeyboardButton(
+            text='\u2192', callback_data=Constants.CALLBACK.DUEL_TEAM_PAGE(duel_id, page_number + 1)))
 
     control_keys = [
         InlineKeyboardButton(text='Abort', callback_data=Constants.CALLBACK.DUEL_TEAM_ABORT(event_id=duel_id))]
@@ -623,7 +621,8 @@ def build_team_selection(bot, chat_id, duel_id, page_number):
         control_keys.append(InlineKeyboardButton(text='Accept Team',
                                                  callback_data=Constants.CALLBACK.DUEL_TEAM_ACCEPT(
                                                      event_id=duel_id)))
-    keys.append(page_keys)
+    if len(page_keys) > 0:
+        keys.append(page_keys)
     keys.append(control_keys)
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=keys)
